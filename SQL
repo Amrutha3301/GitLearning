@@ -1,0 +1,138 @@
+create database MphasisLA;
+show databases;
+use MphasisLA;
+create table student(
+sroll int, constraint mk1 primary key(sroll), 
+fname varchar(20) not null, 
+lname varchar(20), 
+dob date not null,
+gender varchar(1) default 'M' check(gender in('M', 'f')));
+
+alter table student add column contactno int;
+describe student;
+
+alter table student add constraint mk2 check (contactno between 100 and 200)
+drop table student;
+                                  
+show tables
+set autocommit=0;
+  insert into student ( sroll,fname,lname,dob,gender) 
+  values(1001,'Amrutha', 'Mendon','2011-11-11','F'),
+  (1002,'Arya', 'Kunder','2011-11-18', default),
+  (1003,'Nisarga', 'Kunder','2012-02-18','F'),
+  (1004,'Trishul', 'Bangera','2010-05-07','M'),
+  (1005,'Neha', 'Dinesh','2011-06-13','F'),
+  (1006,'Jyotsna', 'Suvarna','2012-10-10','F'),
+  (1007,'Oliver', 'Queen','2011-12-04',default),
+  (1008,'Trisha', 'Kidiyor','2011-09-29','F'),
+  (1009,'Sara', 'Mendon','2012-07-21','F'),
+  (1010,'Barry', 'Allen','2011-05-30',default);
+  select * from student;
+  
+  set sql_safe_updates=0;
+  
+  update student set contactno = 220 where sroll=1001;
+  delete from student where sroll=1001;
+  alter table student drop column contactno;
+  alter table student modify fname varchar(50);
+  alter table student rename column fname to firstname;
+  commit;
+  rollback;
+  create table statetable
+  (stateid varchar(10) primary key,
+  statename varchar(20) not null);
+  
+   create table citytable
+  (cityid varchar(10) primary key,
+  stateid varchar(10), foreign key(stateid) references statetable(stateid),
+  cityname varchar(20) not null);
+  
+  insert into statetable values
+  ('S01','Karnataka'),
+  ('S02','Kerala'),
+  ('S03','Gujarat'),
+  ('S04','Delhi'),
+  ('S05','Goa'),
+  ('S06','Bihar'),
+  ('S07','Punjab');
+  
+  insert into citytable values
+  ('C01','S01','Udupi'),
+  ('C02','S01','Mangalore'),
+  ('C03','S02','kasarkod'),
+  ('C04','S02','wayanad'),
+  ('C05','S03','Surat'),
+  ('C06','S03','Ahmedabad'),
+  ('C07','S04','south delhi'),
+  ('C08','S07','Jalandhar');
+         
+         create table connecttable
+         (id int primary key,
+         sroll int references student(sroll),
+         cityid varchar(10), foreign key (cityid) references citytable(cityid));
+         
+	insert into connecttable values
+    (1,1001,'C01'),
+	(2,1002,'C02'),
+	(3,1003,'C01'),
+	(4,1004,'C03'),
+	(5,1005,'C06'),
+	(6,1006,'C05'),
+	(7,1007,'C01'),
+	(8,1008,'C07'),
+	(9,1009,'C02'),
+	(10,1010,'C08');
+             
+             create table subjecttable
+             ( subid varchar(10) primary key,
+             subject varchar(25) not null);
+             
+             insert into subjecttable values
+             ('E01','English 1'),
+             ('E02','English 2'),
+             ('C01',' organic Chemistry'),
+             ('C02','Inorganic chemistry'),
+             ('M01','Algebra'),
+             ('M02','Calculus'),
+             ('P01','Physics'),
+             ('H01','Histroy');
+             
+  
+  create table markstable
+  (id int unique not null,
+  sroll int references student(sroll),
+  testnum int not null,
+  subjectid varchar(10), foreign key (subjectid) references subjecttable(subid),
+  marks int check(marks between 0 and 100), primary key(sroll,testnum,subjectid));
+  
+  drop table markstable;
+  
+  insert into markstable values
+  (1,1001,1,'E01',87),
+  (2,1001,1,'E02',79),
+  (3,1001,1,'H01',89),
+  (4,1001,2,'E01',68),
+  (5,1001,2,'H01',91),
+  (6,1002,1,'E01',94),
+  (7,1002,1,'P01',82),
+  (8,1002,2,'P01',88),
+  (9,1003,1,'M01',73),
+  (10,1003,2,'M01',84),
+  (11,1004,1,'M02',58),
+  (12,1005,1,'C01',70),
+  (13,1005,2,'C02',91);
+  
+  commit;
+  create user amrutha identified by 'admin@123';
+  grant DBA to amrutha;
+  
+  select all * from student;
+  
+  select sroll,firstname,dob,cityname from student natural join connecttable natural join citytable;
+
+select a.sroll,a.firstname,a.dob,b.cityname,c.statename from student a, connecttable d,citytable b, statetable c where(a.sroll=d.sroll and d.cityid=b.cityid and b.stateid=c.stateid);
+
+
+select a.sroll,a.firstname,a.dob,b.cityname,c.statename from student a inner join connecttable d on (a.sroll=d.sroll) 
+inner join citytable b on (d.cityid=b.cityid) inner join statetable c on(b.stateid=c.stateid);
+ 
