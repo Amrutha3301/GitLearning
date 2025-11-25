@@ -1,0 +1,79 @@
+create database project;
+use project;
+create table customer(
+customerid int primary key auto_increment,
+name varchar(50) not null,
+address varchar(250) not null,
+phonenumber varchar(10) not null,
+email varchar(50) unique);
+
+drop table customer;
+
+desc customer;
+ insert into customer (name, address, phonenumber, email)
+ values 
+ ('Amrutha','Udupi','7278945621','amrutha@gmail.com'),
+('Amith','Manipal','7009100323','amith@gmail.com'),
+('Neha','Bangalore','8970564321','neha@gmail.com');
+
+select * from customer;
+
+create table meter(
+meterid int primary key,
+customerid int references customer(customerid) on delete cascade,
+installationdate date not null,
+lastreadinddate date not null);
+
+desc meter;
+
+insert into meter values
+(101,1,'2025-11-25', '2025-11-30'),
+    (102, 2, '2025-11-20', '2025-11-28'),
+    (103, 3, '2025-11-15', '2025-11-25');
+    
+    select * from meter;
+    
+    create table electricityusage (
+    usageid int primary key,
+    meterid int references meter(meterid) on delete cascade,
+    reading date not null,
+    usageunits numeric(10,2) check(usageunits>=0));
+     desc electricityusage;
+     
+    insert into electricityusage values
+    (1001,101, '2025-11-01', 120.50),
+    (1002,102, '2025-11-02', 85.75),
+    (1003,103, '2025-11-03', 150.00);
+    
+    select * from electricityusage;
+    
+    create table bill(
+    billid int primary key,
+    meterid int references meter(meterid) on delete cascade,
+    billdate date not null,
+    amountdue numeric(10,2) check(amountdue>=0),
+    duedate date not null,
+    paid boolean not null default false);
+     desc bill;
+     insert into bill values
+    (5001,101, '2025-11-01', 120.50, '2025-11-15', FALSE),  
+    (5002,102, '2025-11-02', 85.75, '2025-11-16', TRUE), 
+    (5003,103, '2025-11-03', 150.00, '2025-11-17', FALSE);
+    
+    select * from bill;
+    
+    create table payment (
+    paymentid int primary key,
+    billid int references bill(billid) on delete cascade,
+    paymentdate date not null,
+    amountpaid numeric(10,2), check(amountpaid>=0));
+      desc payment;
+    insert into payment values
+     (301,5001, '2025-11-10', 120.50),   
+    (302,5002,'2025-11-12', 85.75),  
+    (303,5003, '2025-11-15', 150.00); 
+    select * from payment;
+    
+    
+    
+
