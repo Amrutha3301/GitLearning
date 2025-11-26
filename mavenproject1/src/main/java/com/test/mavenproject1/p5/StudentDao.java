@@ -6,6 +6,8 @@ import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.mysql.cj.jdbc.result.ResultSetMetaData;
+
 public class StudentDao {
 	//private ResultSet performquery(S)
 	public List<StudentDto> getAllStudent() throws Exception {
@@ -13,6 +15,12 @@ public class StudentDao {
 		PreparedStatement ps=con.prepareStatement("Select* from Student");
 		ResultSet rs = ps.executeQuery(); // RS is cursor which points the data here it is pointing to beginning of file
 		List<StudentDto> l1 =new ArrayList<StudentDto>();
+		ResultSetMetaData rm = (ResultSetMetaData) rs.getMetaData();
+		System.out.println(rm.getColumnCount());
+		int c =rm.getColumnCount();
+		for(int i=1;i<=c;i++) {
+			System.out.println(rm.getCatalogName(i)+" "+rm.getColumnType(i));
+		}
 		while(rs.next()) {
 			l1.add(new StudentDto(rs.getInt(1),rs.getString(2),rs.getString(3),rs.getDate(4),rs.getString(5)));
 		}
