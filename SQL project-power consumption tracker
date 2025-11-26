@@ -22,14 +22,15 @@ create table meter(
 meterid int primary key,
 customerid int references customer(customerid) on delete cascade,
 installationdate date not null,
-lastreadinddate date not null);
-
+lastreadingdate date not null);
+ drop table meter;
 desc meter;
 
 insert into meter values
 (101,1,'2025-11-25', '2025-11-30'),
     (102, 2, '2025-11-20', '2025-11-28'),
-    (103, 3, '2025-11-15', '2025-11-25');
+    (103, 3, '2025-11-15', '2025-11-25'),
+     (104, 3, '2025-12-15', '2025-11-25');
     
     select * from meter;
     
@@ -41,9 +42,10 @@ insert into meter values
      desc electricityusage;
      
     insert into electricityusage values
-    (1001,101, '2025-11-01', 120.50),
+    (1001,101, '2025-11-01', 320.50),
     (1002,102, '2025-11-02', 85.75),
-    (1003,103, '2025-11-03', 150.00);
+    (1003,103, '2025-11-03', 150.00),
+     (1004,102, '2025-12-02', 185.75);
     
     select * from electricityusage;
     
@@ -56,10 +58,10 @@ insert into meter values
     paid boolean not null default false);
      desc bill;
      insert into bill values
-    (5001,101, '2025-11-01', 120.50, '2025-11-15', FALSE),  
-    (5002,102, '2025-11-02', 85.75, '2025-11-16', TRUE), 
-    (5003,103, '2025-11-03', 150.00, '2025-11-17', FALSE);
-    
+    (5001,101, '2025-11-01', 220.50, '2025-11-15', false),  
+    (5002,102, '2025-11-02', 85.75, '2025-11-16', true), 
+    (5003,103, '2025-11-03', 150.00, '2025-11-17', false),
+     (5004,101, '2025-11-01', 110.50, '2025-11-15', false); 
     select * from bill;
     
     create table payment (
@@ -74,6 +76,20 @@ insert into meter values
     (303,5003, '2025-11-15', 150.00); 
     select * from payment;
     
-    
-    
+    select m.meterid,m.customerid ,sum(e.usageunits)as total_usage from meter m join electricityusage e on m.meterid=e.meterid group by m.meterid having sum(e.usageunits)>200;
+  
+  select c.customerid,c.name,sum(b.amountdue) as total_unpaid_amount from customer c 
+  join meter m on m.customerid=c.customerid 
+  join bill b on b.meterid=m.meterid
+  where paid='false' group by c.customerid,c.name
+  order by total_unpaid_amount desc;
+  
+  select b.billid,b.billdate,b.paid as payment_status from bill b
+  left join payment p on b.billid=p.billid
+  order by b.billdate asc;
+  
+  select distinct m.customerid from meter m where m.installationdate >'2023-12-31';
+  
+select m.meterid,m.lastreadingdate,sum(e.usageunits) as total_usage_units
+from meter m join electricityusage e on m.meterid=e.meterid group by m.meterid order by total_usage_units desc;
 
