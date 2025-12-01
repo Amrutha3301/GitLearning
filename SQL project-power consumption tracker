@@ -89,7 +89,114 @@ insert into meter values
   order by b.billdate asc;
   
   select distinct m.customerid from meter m where m.installationdate >'2023-12-31';
+SELECT DISTINCT c.CustomerID, c.Name
+FROM Customer c
+JOIN Meter m ON m.CustomerID = c.CustomerID
+WHERE m.InstallationDate > '2023-12-31';
+
   
 select m.meterid,m.lastreadingdate,sum(e.usageunits) as total_usage_units
 from meter m join electricityusage e on m.meterid=e.meterid group by m.meterid order by total_usage_units desc;
 
+
+
+
+Customer Table
+insert into customer (name, address, phonenumber, email) values
+('Amrutha','Udupi','7278945621','amrutha@gmail.com'),
+('Amith','Manipal','7009100323','amith@gmail.com'),
+('Neha','Bangalore','8970564321','neha@gmail.com'),
+('Rahul','Mysore','9988776655','rahul@gmail.com'),
+('Riya','Mangalore','8899001122','riya@gmail.com');
+
+2️⃣ Meter Table
+insert into meter (meterid, customerid, installationdate, lastreadingdate) values
+(101, 1, '2024-10-01', '2025-11-30'),
+(102, 2, '2024-10-05', '2025-11-29'),
+(103, 3, '2024-11-01', '2025-11-25'),
+(104, 4, '2024-11-10', '2025-11-28'),
+(105, 5, '2024-12-01', '2025-11-27');
+
+3️⃣ Electricity Usage Table
+insert into electricityusage (usageid, meterid, readingdate, usageunits) values
+(1001, 101, '2025-12-01', 120.50),
+(1002, 102, '2025-12-02', 85.75),
+(1003, 103, '2025-12-03', 150.00),
+(1004, 104, '2025-12-04', 210.25),
+(1005, 105, '2025-12-05', 175.60);
+
+4️⃣ Bill Table
+insert into bill (billid, meterid, billdate, amountdue, duedate, paid) values
+(5001, 101, '2025-12-01', 120.50, '2025-12-15', false),
+(5002, 102, '2025-12-02', 85.75, '2025-12-16', true),
+(5003, 103, '2025-12-03', 150.00, '2025-12-17', false),
+(5004, 104, '2025-12-04', 210.25, '2025-12-18', true),
+(5005, 105, '2025-12-05', 175.60, '2025-12-19', false);
+
+5️⃣ Payment Table
+insert into payment (paymentid, billid, paymentdate, amountpaid) values
+(301, 5001, '2025-12-10', 120.50),
+(302, 5002, '2025-12-12', 85.75),
+(303, 5003, '2025-12-15', 150.00),
+(304, 5004, '2025-12-16', 210.25),
+(305, 5005, '2025-12-20', 175.60);
+
+
+1. Find customers who have paid at least one bill
+SELECT DISTINCT c.CustomerID, c.Name
+FROM Customer c
+JOIN Meter m ON m.CustomerID = c.CustomerID
+JOIN Bill b ON b.MeterID = m.MeterID
+JOIN Payment p ON p.BillID = b.BillID;
+
+2. Find meters that do not have any payment records
+SELECT m.MeterID, m.CustomerID
+FROM Meter m
+LEFT JOIN Bill b ON b.MeterID = m.MeterID
+LEFT JOIN Payment p ON p.BillID = b.BillID
+WHERE p.PaymentID IS NULL;
+
+3. Show total number of customers in each city
+SELECT Address AS City, COUNT(*) AS TotalCustomers
+FROM Customer
+GROUP BY Address;
+
+4. Show the highest electricity usage record
+SELECT UsageID, MeterID, UsageUnits
+FROM ElectricityUsage
+ORDER BY UsageUnits DESC
+LIMIT 1;
+
+5. Find bills that are overdue (due date < today and unpaid)
+SELECT BillID, MeterID, AmountDue, DueDate
+FROM Bill
+WHERE Paid = 0 AND DueDate < CURDATE();
+
+6. Calculate average electricity usage for each meter
+SELECT MeterID, AVG(UsageUnits) AS AverageUsage
+FROM ElectricityUsage
+GROUP BY MeterID;
+
+7. Show all payments made in December 2025
+SELECT *
+FROM Payment
+WHERE MONTH(PaymentDate) = 12 AND YEAR(PaymentDate) = 2025;
+
+8. Display customer name, meter ID, and total bill amount due
+SELECT c.Name, m.MeterID, SUM(b.AmountDue) AS TotalAmount
+FROM Customer c
+JOIN Meter m ON c.CustomerID = m.CustomerID
+JOIN Bill b ON b.MeterID = m.MeterID
+GROUP BY c.Name, m.MeterID;
+
+9. List customers who have more than one meter installed
+SELECT c.CustomerID, c.Name, COUNT(m.MeterID) AS MeterCount
+FROM Customer c
+JOIN Meter m ON m.CustomerID = c.CustomerID
+GROUP BY c.CustomerID, c.Name
+HAVING COUNT(m.MeterID) > 1;
+
+10. Show the latest reading date for each meter
+SELECT MeterID, MAX(ReadingDate) AS LatestReadingDate
+FROM ElectricityUsage
+GROUP BY MeterID;
