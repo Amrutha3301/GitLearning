@@ -1,0 +1,575 @@
+1) com.test.TaxCalApp.App.java
+package com.test.TaxCalApp;
+
+import controller.AuthController;
+import controller.PropertyController;
+import controller.VehicleController;
+import controller.SummaryController;
+import util.ConsoleFormat;
+import util.InputValidation;
+
+public class App {
+    public static void main(String[] args) {
+        // Print project header once
+        ConsoleFormat.printProjectHeader();
+
+        // Login (3 attempts)
+        if (!AuthController.login()) {
+            System.out.println("Too many failed login attempts. Exiting.");
+            return;
+        }
+
+        // Main menu loop
+        while (true) {
+            ConsoleFormat.printBoxedTitle("MAIN MENU");
+            System.out.println("1. PROPERTY TAX");
+            System.out.println("2. VEHICLE TAX");
+            System.out.println("3. TOTAL SUMMARY");
+            System.out.println("4. EXIT");
+
+            int choice = InputValidation.readIntInRange("Choose option (1-4): ", 1, 4);
+
+            switch (choice) {
+                case 1: PropertyController.propertyMenu(); break;
+                case 2: VehicleController.vehicleMenu(); break;
+                case 3: SummaryController.totalSummary(); break;
+                case 4:
+                    System.out.println("THANK YOU - APPLICATION CLOSED.");
+                    return;
+                default: System.out.println("Invalid choice"); break;
+            }
+        }
+    }
+}
+
+2) controller/AuthController.java
+package controller;
+
+import util.ConsoleFormat;
+import util.InputValidation;
+
+public class AuthController {
+
+    public static boolean login() {
+        ConsoleFormat.printBoxedTitle("WELCOME TO TAX CALCULATION APP");
+        System.out.println("PLEASE LOGIN TO CONTINUE -");
+
+        int attempts = 0;
+        while (attempts < 3) {
+            String user = InputValidation.readString("USERNAME - ");
+            String pass = InputValidation.readString("PASSWORD - ");
+
+            if ("admin".equals(user) && "admin123".equals(pass)) {
+                System.out.println("\nLOGIN SUCCESSFUL! Welcome, " + user + ".\n");
+                return true;
+            } else {
+                attempts++;
+                System.out.println("INVALID CREDENTIALS! Attempts left: " + (3 - attempts));
+            }
+        }
+        return false;
+    }
+}
+
+3) controller/PropertyController.java
+package controller;
+
+import model.Property;
+import service.DataManager;
+import util.ConsoleFormat;
+import util.InputValidation;
+
+import java.util.List;
+
+public class PropertyController {
+
+    public static void propertyMenu() {
+        while (true) {
+            ConsoleFormat.printBoxedTitle("PROPERTY MENU");
+            System.out.println("1. ADD PROPERTY DETAILS");
+            System.out.println("2. CALCULATE PROPERTY TAX (by id)");
+            System.out.println("3. DISPLAY ALL PROPERTIES");
+            System.out.println("4. BACK TO MAIN MENU");
+
+            int ch = InputValidation.readIntInRange("Choose option (1-4): ", 1, 4);
+            switch (ch) {
+                case 1: addProperty(); break;
+                case 2: calculatePropertyTax(); break;
+                case 3: listProperties(); break;
+                case 4: return;
+                default: System.out.println("Invalid choice"); break;
+            }
+        }
+    }
+
+    private static void addProperty() {
+        ConsoleFormat.printBoxedTitle("ADD PROPERTY");
+        double baseValue = InputValidation.readPositiveDouble("ENTER THE BASE VALUE OF LAND: ");
+        double builtUp = InputValidation.readPositiveDouble("ENTER THE BUILT-UP AREA OF LAND: ");
+        int age = InputValidation.readIntInRange("ENTER THE AGE OF LAND IN YEARS: ", 1, 1000);
+        boolean inCity = InputValidation.readYesNo("IS THE LAND LOCATED IN CITY?(Y: YES, N: NO): ");
+        Property p = new Property(builtUp, age, baseValue, inCity);
+        DataManager.getInstance().addProperty(p);
+        System.out.printf("PROPERTY ADDED. ID = %d, TAX = %.2f%n", p.getId(), p.getTax());
+    }
+
+    private static void calculatePropertyTax() {
+        ConsoleFormat.printBoxedTitle("CALCULATE PROPERTY TAX");
+        List<Property> list = DataManager.getInstance().getPropertiesSortedByTaxDesc();
+        if (list.isEmpty()) {
+            System.out.println("No Data Present At This Moment (Properties).");
+            return;
+        }
+        System.out.println("ID | BUILT-UP AREA | BASE PRICE | AGE(YEARS) | IN CITY | PROPERTY TAX");
+        System.out.println("=====================================================================");
+        for (Property p : list) System.out.println(p.toTableString());
+        int id = InputValidation.readIntInRange("ENTER THE PROPERTY ID TO CALCULATE THE TAX: ", 1, Integer.MAX_VALUE);
+        Property found = DataManager.getInstance().findPropertyById(id);
+        if (found == null) System.out.println("Property not found for ID: " + id);
+        else System.out.printf("PROPERTY TAX FOR PROPERTY ID - %d IS %.2f%n", id, found.getTax());
+    }
+
+    private static void listProperties() {
+        ConsoleFormat.printBoxedTitle("DISPLAY ALL PROPERTIES");
+        List<Property> list = DataManager.getInstance().getPropertiesSortedByTaxDesc();
+        if (list.isEmpty()) {
+            System.out.println("No Data Present At This Moment (Properties).");
+            return;
+        }
+        System.out.println("ID | BUILT-UP AREA | BASE PRICE | AGE(YEARS) | IN CITY | PROPERTY TAX");
+        System.out.println("=====================================================================");
+        for (Property p : list) System.out.println(p.toTableString());
+    }
+}
+
+4) controller/VehicleController.java
+package controller;
+
+import model.Vehicle;
+import service.DataManager;
+import util.ConsoleFormat;
+import util.InputValidation;
+
+import java.util.List;
+
+public class VehicleController {
+
+    public static void vehicleMenu() {
+        while (true) {
+            ConsoleFormat.printBoxedTitle("VEHICLE MENU");
+            System.out.println("1. ADD VEHICLE DETAILS");
+            System.out.println("2. CALCULATE VEHICLE TAX (by reg)");
+            System.out.println("3. DISPLAY ALL VEHICLES");
+            System.out.println("4. BACK TO MAIN MENU");
+
+            int ch = InputValidation.readIntInRange("Choose option (1-4): ", 1, 4);
+            switch (ch) {
+                case 1: addVehicle(); break;
+                case 2: calculateVehicleTax(); break;
+                case 3: listVehicles(); break;
+                case 4: return;
+                default: System.out.println("Invalid choice"); break;
+            }
+        }
+    }
+
+    private static void addVehicle() {
+        ConsoleFormat.printBoxedTitle("ADD VEHICLE");
+        String reg = InputValidation.readRegistrationNumber();
+        String brand = InputValidation.readNonEmptyString("ENTER BRAND OF THE VEHICLE: ");
+        int velocity = InputValidation.readIntInRange("ENTER THE MAXIMUM VELOCITY OF THE VEHICLE(KMPH): ", 120, 300);
+        int capacity = InputValidation.readIntInRange("ENTER CAPACITY (NUMBER OF SEATS) OF THE VEHICLE: ", 2, 50);
+        System.out.println("CHOOSE THE TYPE OF THE VEHICLE - 1.PETROL 2.DIESEL 3.CNG/LPG");
+        int type = InputValidation.readIntInRange("Enter type (1-3): ", 1, 3);
+        double cost = InputValidation.readDoubleInRange("ENTER THE PURCHASE COST OF THE VEHICLE: ", 50000, 1000000);
+        Vehicle v = new Vehicle(reg, brand, cost, velocity, capacity, type);
+        DataManager.getInstance().addVehicle(v);
+        System.out.printf("VEHICLE ADDED. REG = %s, TAX = %.2f%n", v.getRegistrationNumber(), v.getTax());
+    }
+
+    private static void calculateVehicleTax() {
+        ConsoleFormat.printBoxedTitle("CALCULATE VEHICLE TAX");
+        List<Vehicle> list = DataManager.getInstance().getVehiclesSortedByTaxDesc();
+        if (list.isEmpty()) {
+            System.out.println("No Data Present At This Moment (Vehicles).");
+            return;
+        }
+        System.out.println("REGISTRATION NO | BRAND | MAX. VELOCITY | NO. OF SEATS | TYPE | PURCHASE COST | VEHICLE TAX");
+        System.out.println("===========================================================================================");
+        for (Vehicle v : list) System.out.println(v.toTableString());
+        String reg = InputValidation.readRegistrationNumberWithPrompt("ENTER THE REGISTRATION NO OF VEHICLE TO CALCULATE THE TAX: ");
+        Vehicle found = DataManager.getInstance().findVehicleByRegistration(reg);
+        if (found == null) System.out.println("Vehicle not found for reg: " + reg);
+        else System.out.printf("VEHICLE TAX FOR REGISTRATION NO %s IS %.2f%n", reg, found.getTax());
+    }
+
+    private static void listVehicles() {
+        ConsoleFormat.printBoxedTitle("DISPLAY ALL VEHICLES");
+        List<Vehicle> list = DataManager.getInstance().getVehiclesSortedByTaxDesc();
+        if (list.isEmpty()) {
+            System.out.println("No Data Present At This Moment (Vehicles).");
+            return;
+        }
+        System.out.println("REGISTRATION NO | BRAND | MAX. VELOCITY | NO. OF SEATS | TYPE | PURCHASE COST | VEHICLE TAX");
+        System.out.println("===========================================================================================");
+        for (Vehicle v : list) System.out.println(v.toTableString());
+    }
+}
+
+5) controller/SummaryController.java
+package controller;
+
+import service.DataManager;
+import util.ConsoleFormat;
+import model.Property;
+import model.Vehicle;
+
+import java.util.List;
+
+public class SummaryController {
+
+    public static void totalSummary() {
+        ConsoleFormat.printBoxedTitle("TOTAL SUMMARY");
+
+        List<Property> props = DataManager.getInstance().getProperties();
+        List<Vehicle> vehs = DataManager.getInstance().getVehicles();
+
+        if (props.isEmpty() && vehs.isEmpty()) {
+            System.out.println("No Data Present At This Moment (Both).");
+            return;
+        }
+
+        double totalPropTax = props.stream().mapToDouble(Property::getTax).sum();
+        double totalVehTax = vehs.stream().mapToDouble(Vehicle::getTax).sum();
+
+        System.out.println("+------------------------------------------------------+");
+        System.out.println("| SR.NO | PARTICULAR | QUANTITY | TAX                  |");
+        System.out.println("+------------------------------------------------------+");
+        System.out.printf("| %5d | %-9s | %8d | %10.2f |\n", 1, "PROPERTIES", props.size(), totalPropTax);
+        System.out.printf("| %5d | %-9s | %8d | %10.2f |\n", 2, "VEHICLES", vehs.size(), totalVehTax);
+        System.out.println("+------------------------------------------------------+");
+        System.out.printf("| TOTAL                       | %8d | %10.2f |\n", props.size()+vehs.size(), totalPropTax+totalVehTax);
+        System.out.println("+------------------------------------------------------+");
+    }
+}
+
+6) model/Asset.java
+package model;
+
+public abstract class Asset {
+    protected double tax;
+    public double getTax() { return tax; }
+    public abstract void calculateTax();
+}
+
+7) model/Property.java
+package model;
+
+public class Property extends Asset {
+    private static int COUNTER = 1;
+    private final int id;
+    private double builtUpArea;
+    private int age;
+    private double baseValue;
+    private boolean inCity;
+
+    public Property(double builtUpArea, int age, double baseValue, boolean inCity) {
+        this.id = COUNTER++;
+        this.builtUpArea = builtUpArea;
+        this.age = age;
+        this.baseValue = baseValue;
+        this.inCity = inCity;
+        calculateTax();
+    }
+
+    @Override
+    public void calculateTax() {
+        double ageFactor = 1.0 + (age / 100.0);
+        double t = builtUpArea * ageFactor * baseValue;
+        if (inCity) t += 0.5 * builtUpArea;
+        this.tax = Math.round(t * 100.0) / 100.0;
+    }
+
+    // getters & setters
+    public int getId() { return id; }
+    public double getBuiltUpArea() { return builtUpArea; }
+    public void setBuiltUpArea(double builtUpArea) { this.builtUpArea = builtUpArea; calculateTax(); }
+    public int getAge() { return age; }
+    public void setAge(int age) { this.age = age; calculateTax(); }
+    public double getBaseValue() { return baseValue; }
+    public void setBaseValue(double baseValue) { this.baseValue = baseValue; calculateTax(); }
+    public boolean isInCity() { return inCity; }
+    public void setInCity(boolean inCity) { this.inCity = inCity; calculateTax(); }
+
+    public String toTableString() {
+        return String.format("%4d | %11.2f | %10.2f | %10d | %7s | %12.2f",
+                id, builtUpArea, baseValue, age, (inCity ? "Y" : "N"), tax);
+    }
+
+    @Override
+    public String toString() {
+        return toTableString();
+    }
+}
+
+8) model/Vehicle.java
+package model;
+
+public class Vehicle extends Asset {
+    private static int COUNTER = 1;
+    private final int id;
+    private String registrationNumber;
+    private String brand;
+    private double purchaseCost;
+    private int maxVelocity;
+    private int capacity;
+    private int type; // 1=Petrol,2=Diesel,3=CNG
+
+    public Vehicle(String registrationNumber, String brand, double purchaseCost,
+                   int maxVelocity, int capacity, int type) {
+        this.id = COUNTER++;
+        this.registrationNumber = registrationNumber;
+        this.brand = brand;
+        this.purchaseCost = purchaseCost;
+        this.maxVelocity = maxVelocity;
+        this.capacity = capacity;
+        this.type = type;
+        calculateTax();
+    }
+
+    @Override
+    public void calculateTax() {
+        double pct = (type == 1) ? 0.10 : (type == 2) ? 0.11 : 0.12;
+        double t = maxVelocity + capacity + pct * purchaseCost;
+        this.tax = Math.round(t * 100.0) / 100.0;
+    }
+
+    // getters/setters
+    public int getId() { return id; }
+    public String getRegistrationNumber() { return registrationNumber; }
+    public void setRegistrationNumber(String registrationNumber) { this.registrationNumber = registrationNumber; }
+    public String getBrand() { return brand; }
+    public void setBrand(String brand) { this.brand = brand; }
+    public double getPurchaseCost() { return purchaseCost; }
+    public void setPurchaseCost(double purchaseCost) { this.purchaseCost = purchaseCost; calculateTax(); }
+    public int getMaxVelocity() { return maxVelocity; }
+    public void setMaxVelocity(int maxVelocity) { this.maxVelocity = maxVelocity; calculateTax(); }
+    public int getCapacity() { return capacity; }
+    public void setCapacity(int capacity) { this.capacity = capacity; calculateTax(); }
+    public int getType() { return type; }
+    public void setType(int type) { this.type = type; calculateTax(); }
+
+    public String typeName() {
+        switch (type) {
+            case 1: return "PETROL";
+            case 2: return "DIESEL";
+            default: return "CNG";
+        }
+    }
+
+    public String toTableString() {
+        return String.format("%15s | %-10s | %12d | %10d | %4d | %-6s | %12.2f",
+                registrationNumber, brand, maxVelocity, capacity, type, typeName(), tax);
+    }
+
+    @Override
+    public String toString() {
+        return toTableString();
+    }
+}
+
+9) service/DataManager.java (in memory, searching & sorting helpers)
+package service;
+
+import model.Property;
+import model.Vehicle;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
+public class DataManager {
+    private static DataManager instance;
+    private final List<Property> properties = new ArrayList<>();
+    private final List<Vehicle> vehicles = new ArrayList<>();
+
+    private DataManager() {}
+
+    public static DataManager getInstance() {
+        if (instance == null) instance = new DataManager();
+        return instance;
+    }
+
+    public void addProperty(Property p) { properties.add(p); }
+    public void addVehicle(Vehicle v) { vehicles.add(v); }
+
+    public List<Property> getProperties() { return properties; }
+    public List<Vehicle> getVehicles() { return vehicles; }
+
+    public Property findPropertyById(int id) {
+        for (Property p : properties) if (p.getId() == id) return p;
+        return null;
+    }
+
+    public Vehicle findVehicleByRegistration(String reg) {
+        for (Vehicle v : vehicles) if (v.getRegistrationNumber().equals(reg)) return v;
+        return null;
+    }
+
+    public List<Property> getPropertiesSortedByTaxDesc() {
+        List<Property> copy = new ArrayList<>(properties);
+        Collections.sort(copy, new Comparator<Property>() {
+            public int compare(Property a, Property b) {
+                return Double.compare(b.getTax(), a.getTax());
+            }
+        });
+        return copy;
+    }
+
+    public List<Vehicle> getVehiclesSortedByTaxDesc() {
+        List<Vehicle> copy = new ArrayList<>(vehicles);
+        Collections.sort(copy, new Comparator<Vehicle>() {
+            public int compare(Vehicle a, Vehicle b) {
+                return Double.compare(b.getTax(), a.getTax());
+            }
+        });
+        return copy;
+    }
+}
+
+10) util/ConsoleFormat.java
+package util;
+
+public class ConsoleFormat {
+
+    public static void printProjectHeader() {
+        String line = repeat("=", 60);
+        System.out.println(line);
+        System.out.printf("%30s%n", "TAX CALCULATION SYSTEM");
+        System.out.println(line);
+        System.out.printf("%-18s :  %s%n", "Project Name", "Xysis Mini Project - Tax Application");
+        System.out.printf("%-18s :  %s%n", "Developer", "Your Name");
+        System.out.printf("%-18s :  %s%n", "Application Type", "Property & Vehicle Tax Calculator");
+        System.out.printf("%-18s :  %s%n", "Academic Year", "2024-2025");
+        System.out.println(line);
+        System.out.println();
+    }
+
+    public static void printBoxedTitle(String title) {
+        String border = "+----------------------------------------+";
+        System.out.println(border);
+        System.out.printf("|%s|%n", center(" " + title + " ", 40));
+        System.out.println(border);
+    }
+
+    private static String center(String text, int width) {
+        if (text.length() >= width) return text;
+        int padding = (width - text.length()) / 2;
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < padding; i++) sb.append(' ');
+        sb.append(text);
+        while (sb.length() < width) sb.append(' ');
+        return sb.toString();
+    }
+
+    private static String repeat(String s, int times) {
+        StringBuilder sb = new StringBuilder(times * s.length());
+        for (int i = 0; i < times; i++) sb.append(s);
+        return sb.toString();
+    }
+}
+
+11) util/InputValidation.java
+package util;
+
+import java.util.Scanner;
+
+public class InputValidation {
+    private static final Scanner sc = new Scanner(System.in);
+
+    public static String readString(String prompt) {
+        System.out.print(prompt);
+        return sc.nextLine().trim();
+    }
+
+    public static String readNonEmptyString(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String s = sc.nextLine().trim();
+            if (!s.isEmpty()) return s;
+            System.out.println("Input cannot be empty.");
+        }
+    }
+
+    public static int readIntInRange(String prompt, int min, int max) {
+        while (true) {
+            System.out.print(prompt);
+            try {
+                int v = Integer.parseInt(sc.nextLine().trim());
+                if (v >= min && v <= max) return v;
+            } catch (Exception ignored) {}
+            System.out.println("Enter a number between " + min + " and " + max);
+        }
+    }
+
+    public static double readPositiveDouble(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            try {
+                double v = Double.parseDouble(sc.nextLine().trim());
+                if (v > 0) return v;
+            } catch (Exception ignored) {}
+            System.out.println("Enter a positive number.");
+        }
+    }
+
+    public static double readDoubleInRange(String prompt, double min, double max) {
+        while (true) {
+            System.out.print(prompt);
+            try {
+                double v = Double.parseDouble(sc.nextLine().trim());
+                if (v >= min && v <= max) return v;
+            } catch (Exception ignored) {}
+            System.out.println("Enter between " + min + " and " + max);
+        }
+    }
+
+    public static boolean readYesNo(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String s = sc.nextLine().trim().toUpperCase();
+            if (s.equals("Y")) return true;
+            if (s.equals("N")) return false;
+            System.out.println("Enter Y or N.");
+        }
+    }
+
+    public static String readRegistrationNumber() {
+        while (true) {
+            System.out.print("Enter 4-digit registration number (leading zeros allowed, cannot be 0000): ");
+            String s = sc.nextLine().trim();
+            if (s.matches("\\d{4}") && !s.equals("0000")) return s;
+            System.out.println("Invalid registration number. Example valid: 0010 but not 0000.");
+        }
+    }
+
+    public static String readRegistrationNumberWithPrompt(String prompt) {
+        while (true) {
+            System.out.print(prompt);
+            String s = sc.nextLine().trim();
+            if (s.matches("\\d{4}") && !s.equals("0000")) return s;
+            System.out.println("Invalid registration number. Example valid: 0010 but not 0000.");
+        }
+    }
+}
+
+12) exception/InvalidInputException.java
+
+(Optional — not used explicitly above but provided if you want to throw in validation)
+
+package exception;
+
+public class InvalidInputException extends Exception {
+    public InvalidInputException(String message) { super(message); }
+}
