@@ -1,0 +1,656 @@
+Jsp page showing session attribute and cookies (s1.jsp)
+Top-of-file directives and HTML
+Page directive: <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%> Sets the JSP to use Java, specifies the response MIME type and character set, and the page encoding used to read the JSP file.
+
+DOCTYPE and HTML head: Declares an HTML5 document, sets metadata and a generic title. No special behavior—just standard HTML scaffold.
+
+JSP scriptlet: reading session and cookies
+jsp
+<%
+String s1=(String)session.getAttribute("a1");
+Cookie cookies[]=request.getCookies();
+for(Cookie x:cookies){
+%>
+<div>
+<%=x.getName() %> 
+<%=x.getValue() %>
+</div>
+<%} %>
+<h1><%=s1 %></h1>
+Get session attribute:
+
+String s1=(String)session.getAttribute("a1"); retrieves the value stored in the HTTP session under key "a1". It expects a String. If not present, s1 will be null.
+
+Get cookies from request:
+
+Cookie cookies[]=request.getCookies(); returns all cookies sent by the browser in the current HTTP request (as an array). It can be null if the client sent none.
+
+Loop through cookies:
+
+for(Cookie x:cookies){ ... } iterates over each cookie. Inside the loop, two JSP expressions print:
+
+x.getName() → the cookie’s name (e.g., Na1).
+
+x.getValue() → the cookie’s value (e.g., 03-12-2025).
+
+The values are placed inside <div> for readability.
+
+Display session value:
+
+<h1><%=s1 %></h1> prints the session attribute "a1" (e.g., Aria) as a heading.
+
+Tip: In production, check for cookies != null to avoid NullPointerException when no cookies are present.
+
+SessionServlet: sets a session attribute and forwards
+java
+protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    HttpSession session = request.getSession();
+    session.setAttribute("a1","Aria");
+    RequestDispatcher rs=request.getRequestDispatcher("CookieServlet");
+    rs.forward(request, response);
+}
+Get/create session:
+
+request.getSession() returns the current session or creates a new one if none exists. Sessions persist data across requests for a single user.
+
+Set session attribute:
+
+session.setAttribute("a1","Aria"); stores the value "Aria" under key "a1" for later retrieval (in JSP or other servlets).
+
+Forward to CookieServlet:
+
+RequestDispatcher rs = request.getRequestDispatcher("CookieServlet"); obtains a dispatcher to another resource in the same web app.
+
+rs.forward(request, response); forwards the same request/response to CookieServlet. After this call, control passes to CookieServlet (no new request is created; the URL may remain the same from the client’s perspective).
+
+doPost simply delegates to doGet, meaning both GET and POST will execute the same logic.
+
+CookieServlet: sets a cookie and forwards to JSP
+java
+protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    Cookie obj = new Cookie("Na1","03-12-2025");
+    response.addCookie(obj);
+    RequestDispatcher rs=request.getRequestDispatcher("s1.jsp");
+    rs.forward(request, response);
+}
+Create a cookie:
+
+new Cookie("Na1","03-12-2025") constructs a cookie with name Na1 and value 03-12-2025. Cookies are key-value pairs stored client-side.
+
+Add cookie to response:
+
+response.addCookie(obj); instructs the browser to store this cookie. It will be sent back by the client on subsequent requests to the same domain/path.
+
+Forward to s1.jsp:
+
+RequestDispatcher forwards the request to the JSP s1.jsp. In that JSP, cookies received with the current request (and any previously set by the browser) are read and displayed.
+
+Note: The newly added cookie may not appear on the very first forward-read if the browser hasn’t sent it back yet. In many cases, within the same response, request.getCookies() reflects only cookies sent by the client, not those just added. To guarantee display, you can read the cookie directly from the response you just added or render its value without depending on request.getCookies().
+
+Custom JSP tag: Welcome
+java
+public class Welcome extends SimpleTagSupport {
+    @Override
+    public void doTag() throws JspException, IOException {
+        JspWriter out=getJspContext().getOut();
+        out.print("Welcome to J2EE Application "+new Date());
+    }
+}
+SimpleTagSupport:
+
+A convenience base class for simple tag handlers. You override doTag() to produce output when the custom tag is used in a JSP.
+
+Get JspWriter and print:
+
+getJspContext().getOut() gets the writer that outputs into the JSP response.
+
+out.print(...) writes text directly into the response stream. Here, it prints a welcome message with the current server-side date/time.
+
+This tag outputs dynamic content wherever used in the JSP.
+
+Tag library descriptor (custom.tld)
+xml
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<!DOCTYPE taglib PUBLIC "-//Sun Microsystems, Inc.//DTD JSP Tag Library 1.2//EN"
+    "http://java.sun.com/j2ee/dtd/web-jsptaglibrary_1_2.dtd">
+
+<taglib>
+  <tlib-version>1.0</tlib-version>
+  <jsp-version>1.2</jsp-version>
+  <short-name>Welcome</short-name>
+
+  <tag>
+    <name>welcome</name>
+    <tag-class>p3.Welcome</tag-class>
+    <body-content></body-content>
+  </tag>
+
+  <tag>
+    <name>slist</name>
+    <tag-class>p3.StudentReport</tag-class>
+    <body-content></body-content>
+  </tag>
+</taglib>
+DOCTYPE and root: Declares a JSP tag library descriptor (TLD) using the JSP 1.2 DTD.
+
+tlib-version/jsp-version: Versioning info for the taglib and supported JSP version.
+
+short-name: A descriptive short name for the library (not the prefix used in JSP).
+
+tag entries:
+
+<name> defines the tag name used in JSP (e.g., welcome, slist).
+
+<tag-class> points to the Java class implementing the tag logic (p3.Welcome, p3.StudentReport).
+
+<body-content> indicates whether the tag can have nested body content. Empty implies no body or doesn’t process body content.
+
+This TLD enables JSPs to import and use your custom tags via a taglib directive.
+
+Jsp using the custom tags
+jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="x1" uri="/WEB-INF/custom.tld" %>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+<x1:welcome></x1:welcome>
+<div>
+  <x1:slist></x1:slist>
+</div>
+</body>
+</html>
+Taglib directive:
+
+prefix="x1" assigns a local XML namespace prefix used to call tags.
+
+uri="/WEB-INF/custom.tld" maps to the TLD file path inside the web app. Since it’s under WEB-INF, it’s not directly accessible by the client but is available to JSP compilation.
+
+Using custom tags:
+
+<x1:welcome> invokes p3.Welcome#doTag(), printing the welcome message and date.
+
+<x1:slist> invokes p3.StudentReport#doTag(), which will render a table of students.
+
+These tags encapsulate reusable view logic and prevent scriptlet-heavy JSPs.
+
+Custom JSP tag: StudentReport
+java
+public class StudentReport extends SimpleTagSupport {
+    @Override
+    public void doTag() throws JspException, IOException {
+        JspWriter out=getJspContext().getOut();
+        try {
+            StudentDao s=new StudentDao();
+            List<StudentDto> l1=s.getallstudent();
+            out.print("<h1>All Student list</h1>");
+            out.print("<table border='1'>");
+            out.print("<tr><th>Student rollno</th>");
+            out.print("<th>Student FirstName</th>");
+            out.print("<th>Student LastName</th>");
+            out.print("<th>Student DOB</th>");
+            out.print("<th>Student Gender</th></tr>");
+            for(int i=0;i<l1.size();i++) {
+                out.print("<tr><td>"+l1.get(i).getSroll() +"</td>");
+                out.print("<td>"+l1.get(i).getFirstname() +"</td>");
+                out.print("<td>"+l1.get(i).getLname() +"</td>");
+                out.print("<td>"+l1.get(i).getDob() +"</td>");
+                out.print("<td>"+l1.get(i).getGender() +"</td></tr>");
+            }
+            out.print("</table>");
+        } catch (Exception e) {
+            out.print(e.getMessage());
+        }
+    }
+}
+Obtain writer:
+
+getJspContext().getOut() gets the JSP output stream.
+
+Business data retrieval:
+
+StudentDao s=new StudentDao(); creates the DAO.
+
+List<StudentDto> l1=s.getallstudent(); loads all students from your data source. This call should be implemented to query the DB and return DTOs.
+
+Render HTML table:
+
+Prints a header and a table border='1'.
+
+Adds column headers for roll number, first name, last name, DOB, gender.
+
+Iterates through the list and prints each student’s fields into table rows.
+
+Error handling:
+
+Catches any exception (e.g., DB connectivity issues) and prints the message directly into the page. In production, consider logging and a user-friendly message.
+
+Note: If getDob() is a java.util.Date, printing it directly will show the default Date.toString(). If you want yyyy-MM-dd, format it with SimpleDateFormat.
+
+Putting the flow together
+User hits SessionServlet:
+
+It puts "Aria" into the session under key "a1" and forwards the request to CookieServlet.
+
+CookieServlet runs:
+
+It creates and adds a cookie (Na1=03-12-2025) to the response, then forwards to s1.jsp.
+
+s1.jsp renders:
+
+Reads cookies from the request and prints their names and values.
+
+Reads the session attribute "a1" and displays it as a heading.
+
+Custom tags page:
+
+A separate JSP imports custom.tld and renders two tags:
+
+<x1:welcome> prints a welcome message and date.
+
+<x1:slist> fetches student data via StudentDao and prints a table.
+
+These pieces illustrate core Java EE concepts: sessions, cookies, request dispatching, JSP scripting, and custom tag libraries to encapsulate reusable view logic.
+
+Common pitfalls and best practices
+Null checks:
+
+Add if (cookies != null) before iterating.
+
+Ensure session attributes exist before casting/printing.
+
+Character encoding:
+
+Keep JSP pageEncoding and contentType consistent (UTF-8 is good).
+
+Forward vs redirect:
+
+forward keeps the same request; sendRedirect performs a new request and updates the browser URL.
+
+Cookie visibility:
+
+Newly added cookies will be sent by the browser in subsequent requests—not necessarily visible via request.getCookies() in the same forward. If you must show immediately, print the value you just set or perform a redirect to allow the client to send it back.
+
+Custom tags:
+
+Avoid business logic in tag handlers for large apps; fetch data in a servlet/controller and pass it into tags via attributes or JSTL/EL.
+
+Date formatting:
+
+Format dates for display using SimpleDateFormat to ensure consistent output.
+
+If you want, I can refactor this into a cleaner MVC flow: Controller loads data → stores in request scope → JSP uses JSTL/EL and custom tags for display, with zero scriptlets.
+
+
+
+Filter class and annotation configuration
+Package and imports
+package p3; Places this class in the p3 package, which determines namespace and classpath organization.
+
+import java.io.IOException; and import java.io.PrintWriter; Needed for handling I/O exceptions and writing text output to the HTTP response when the filter blocks the request.
+
+Servlet API imports (DispatcherType, Filter, FilterChain, FilterConfig, ServletException, ServletRequest, ServletResponse) Provide the interfaces and types required to create and configure a Servlet Filter, handle the filter chain, and work with request/response objects.
+
+import javax.servlet.annotation.WebFilter; Enables annotation-based filter configuration (instead of web.xml), defining where and when the filter applies.
+
+import javax.servlet.http.Cookie; Though imported, cookies aren’t used in this filter’s code. This could be removed unless cookie logic is planned.
+
+import javax.servlet.http.HttpFilter; HttpFilter (Servlet 4.0+) is a convenience base class implementing Filter with HTTP-specific behavior.
+
+Class declaration
+java
+@WebFilter(
+    dispatcherTypes = { DispatcherType.REQUEST, DispatcherType.FORWARD },
+    filterName = "Filter2",
+    urlPatterns = { "/Filter1" },
+    servletNames = { "CookieServlet" }
+)
+public class Filter1 extends HttpFilter implements Filter {
+@WebFilter configures the filter without web.xml:
+
+dispatcherTypes:
+
+DispatcherType.REQUEST: filter runs on direct client requests.
+
+DispatcherType.FORWARD: filter runs on server-side forwards (via RequestDispatcher.forward).
+
+filterName = "Filter2": logical name of the filter. Note the mismatch: the class is Filter1, but the filterName is "Filter2". This is allowed but can be confusing; aligning names improves clarity.
+
+urlPatterns = { "/Filter1" }: applies the filter to requests whose path matches /Filter1.
+
+servletNames = { "CookieServlet" }: applies the filter to requests routed to the named servlet CookieServlet. This means even if the URL doesn’t match /Filter1, requests going to CookieServlet will still pass through this filter, provided the dispatcher type matches.
+
+extends HttpFilter: inherits default implementations of init and destroy and an HTTP-aware doFilter signature.
+
+implements Filter: formally declares it implements the filter contract.
+
+Constructor
+java
+public Filter1() {
+    super();
+    // TODO Auto-generated constructor stub
+}
+Calls super() (the HttpFilter constructor). The comment indicates it’s generated; nothing else special happens here.
+
+Filter lifecycle methods
+destroy()
+java
+public void destroy() {
+    // TODO Auto-generated method stub
+}
+Called by the container before the filter is taken out of service.
+
+Use it to release resources (e.g., closing pools). Currently empty.
+
+init(FilterConfig fConfig)
+java
+public void init(FilterConfig fConfig) throws ServletException {
+    // TODO Auto-generated method stub
+}
+Called once when the filter is instantiated and initialized.
+
+You can read init params or set up resources here. Currently empty.
+
+Core filtering logic in doFilter
+java
+public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+        throws IOException, ServletException {
+    System.out.println("I am inside the filter");
+    int a = Integer.parseInt(request.getParameter("a1"));
+    if (a > 100) {
+        chain.doFilter(request, response);
+    } else {
+        PrintWriter out = response.getWriter();
+        out.print("Invalid Input");
+    }
+}
+Entry point: doFilter is called for each matching request by the container according to the filter’s mapping and dispatcher types.
+
+System.out.println("I am inside the filter"); Logs to the server console that the filter is executing. Helpful for debugging flow.
+
+int a = Integer.parseInt(request.getParameter("a1"));
+
+Reads the request parameter named a1. This expects the parameter to be present and numeric.
+
+Integer.parseInt converts the string to an int.
+
+If a1 is missing or non-numeric, this line throws NumberFormatException, which will propagate (and likely result in a 500 error). In production, wrap in try/catch and handle gracefully.
+
+Conditional gatekeeping:
+
+if (a > 100) { chain.doFilter(request, response); }
+
+If the value is greater than 100, the filter lets the request continue to the next filter or target servlet/JSP by invoking chain.doFilter.
+
+This is how filters pass control forward in the chain.
+
+else { ... }
+
+If the value is 100 or less, the filter short-circuits the chain and writes a response directly:
+
+PrintWriter out = response.getWriter(); out.print("Invalid Input");
+
+Gets the writer to send text back to the client and prints “Invalid Input”.
+
+Since the chain is not invoked, the target servlet/JSP will not run.
+
+Effect of mappings: Given the annotation, the filter applies to:
+
+Requests matching /Filter1 (by URL).
+
+Requests dispatched to the servlet named CookieServlet.
+
+For both direct requests and forwards.
+
+JSP form that triggers the filter
+jsp
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Insert title here</title>
+</head>
+<body>
+<form action="CookieServlet" method="get">
+  <input type="text" name="a1" placeholder="Enter Greater Then 100"/>
+</form>
+</body>
+</html>
+Page directive and HTML scaffold: Sets UTF-8 and defines a simple HTML5 page.
+
+Form:
+
+action="CookieServlet": Submits the form (via GET) to the servlet named or mapped as CookieServlet.
+
+method="get": Sends parameters via query string.
+
+Input field:
+
+name="a1": Matches what the filter reads (request.getParameter("a1")).
+
+placeholder="Enter Greater Then 100": Prompts the user to enter a number greater than 100.
+
+Interaction with the filter: Since the form submits to CookieServlet, and the filter is mapped with servletNames = { "CookieServlet" }, every submission will pass through the filter. The filter will:
+
+Parse a1.
+
+Allow the request to proceed only if a1 > 100.
+
+Otherwise, respond with “Invalid Input”.
+
+Note: The form lacks a submit button. Browsers won’t submit automatically—add <button type="submit">Go</button> to send the request.
+
+How the request flows
+User opens the JSP with the form and enters a value into a1.
+
+User submits the form to CookieServlet.
+
+The filter (Filter1) intercepts the request because it’s mapped to the servlet name CookieServlet.
+
+Filter tries to parse a1 and evaluates the condition:
+
+If a1 > 100: chain.doFilter passes control to CookieServlet.
+
+Else: The filter writes “Invalid Input” and stops the chain.
+
+Best practices and improvements
+Robust parameter handling:
+
+Validate a1 and handle missing or invalid values:
+
+java
+String raw = request.getParameter("a1");
+int a;
+try {
+    a = Integer.parseInt(raw);
+} catch (NumberFormatException e) {
+    response.setContentType("text/plain;charset=UTF-8");
+    response.getWriter().print("Invalid numeric input for a1");
+    return;
+}
+Content type:
+
+Before writing text, set the content type:
+
+java
+response.setContentType("text/plain;charset=UTF-8");
+Submit button in form:
+
+Add <button type="submit">Submit</button> to allow actual submission.
+
+Annotation clarity:
+
+Align filterName with class name (e.g., filterName = "Filter1").
+
+Confirm urlPatterns are needed. If you only want to filter requests going to CookieServlet, you can remove urlPatterns and keep servletNames.
+
+Dispatcher types:
+
+Keep REQUEST and FORWARD only if you truly need both. If you only want direct requests, remove FORWARD.
+
+Summary
+The filter enforces a simple rule: only requests with a1 > 100 may proceed to CookieServlet.
+
+It’s mapped both by URL and by servlet name, and applies to direct requests and forwards.
+
+doFilter is the core method: parse parameter, decide, either continue the chain or produce a response.
+
+The JSP form sends a1 to CookieServlet, thereby triggering the filter.
+
+Improve robustness with validation, content types, and a submit button, and consider simplifying annotation mappings to exactly match desired behavior.
+
+
+
+Session management is about tracking user data across multiple requests. In your example, you used several of the techniques:
+
+1. Using Request Object
+Request attributes exist only for a single request/forward.
+
+Example in your code:
+
+java
+RequestDispatcher rs=request.getRequestDispatcher("CookieServlet");
+rs.forward(request, response);
+Here, the request object is forwarded to another servlet. If you had set request.setAttribute("key", value), it would be available only during this forward.
+
+2. Session Object
+Sessions persist data across multiple requests from the same client.
+
+Example in your SessionServlet:
+
+java
+HttpSession session = request.getSession();
+session.setAttribute("a1","Aria");
+This stores "Aria" under key "a1" in the session.
+
+Later in s1.jsp, you retrieved it:
+
+jsp
+String s1=(String)session.getAttribute("a1");
+<h1><%=s1 %></h1>
+This shows how the session object keeps track of user data across requests.
+
+3. Cookies
+Cookies store data on the client side and are sent back with each request.
+
+Example in your CookieServlet:
+
+java
+Cookie obj = new Cookie("Na1","03-12-2025");
+response.addCookie(obj);
+This adds a cookie to the response.
+
+In s1.jsp, you read cookies:
+
+jsp
+Cookie cookies[]=request.getCookies();
+for(Cookie x:cookies){
+    <%=x.getName() %> <%=x.getValue() %>
+}
+This demonstrates cookie-based session management.
+
+4. Hidden Variables
+Hidden fields in forms carry data invisibly between requests.
+
+Example in your edit form JSP:
+
+jsp
+<input type='hidden' name='a6' value='2'/>
+This value is not visible to the user but is submitted with the form.
+
+Useful for carrying IDs or flags without exposing them in the UI.
+
+🏷️ Custom Tags in Your Code
+Custom tags encapsulate Java logic so JSPs remain clean.
+
+1. Creating a Custom Tag
+You created Welcome and StudentReport classes extending SimpleTagSupport.
+
+Example:
+
+java
+public class Welcome extends SimpleTagSupport {
+    @Override
+    public void doTag() throws JspException, IOException {
+        JspWriter out=getJspContext().getOut();
+        out.print("Welcome to J2EE Application "+new Date());
+    }
+}
+This tag prints a welcome message with the current date.
+
+2. Override doTag Method
+Both Welcome and StudentReport override doTag() to define output.
+
+StudentReport fetches student data from StudentDao and prints a table.
+
+3. Describe the Tag in the Tag Library
+In custom.tld:
+
+xml
+<tag>
+  <name>welcome</name>
+  <tag-class>p3.Welcome</tag-class>
+  <body-content></body-content>
+</tag>
+<tag>
+  <name>slist</name>
+  <tag-class>p3.StudentReport</tag-class>
+  <body-content></body-content>
+</tag>
+This maps tag names (welcome, slist) to their Java classes.
+
+4. Use the URI in JSP
+In your JSP:
+
+jsp
+<%@ taglib prefix="x1" uri="/WEB-INF/custom.tld" %>
+<x1:welcome></x1:welcome>
+<x1:slist></x1:slist>
+This imports the tag library and uses the custom tags.
+
+<x1:welcome> calls Welcome#doTag().
+
+<x1:slist> calls StudentReport#doTag().
+
+📌 PrintWriter vs JspWriter
+Servlets:
+
+java
+PrintWriter out = response.getWriter();
+out.print("Hello from servlet");
+Output stream comes from the HttpServletResponse.
+
+Custom Tags:
+
+java
+JspWriter out = getJspContext().getOut();
+out.print("Hello from custom tag");
+Output stream comes from the JSP context, because tags are embedded inside JSPs.
+
+✅ Summary
+Session Management: Your code demonstrates all four techniques:
+
+Request object (forwarding attributes),
+
+Session object (session.setAttribute),
+
+Cookies (response.addCookie and request.getCookies),
+
+Hidden variables (<input type="hidden">).
+
+Custom Tags: You created reusable tags (welcome, slist) by:
+
+Extending SimpleTagSupport,
+
+Overriding doTag,
+
+Declaring them in a TLD,
+
+Using them in JSP with a taglib directive.
+
+Output Streams: Servlets use PrintWriter, custom tags use JspWriter.
