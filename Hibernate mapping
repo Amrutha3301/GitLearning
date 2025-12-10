@@ -459,3 +459,70 @@ Output when persisting:
 Hibernate inserts into the join table to link students and marks.
 
 Redundant: you now have both a foreign key in marks1 and a join table linking the same entities.
+
+
+1. OUTPUT / BEHAVIOR WITH mappedBy
+✔ Only ONE join table is created
+
+Hibernate will create the join table ONLY on the owning side (Property).
+
+Generated Join Table
+property2_citizen2
+---------------------------
+property2_id   (FK)
+citizen2_id    (FK)
+
+Why?
+
+PropertyEntity is the owning side.
+
+CitizenEntity is the inverse side because of mappedBy.
+
+Inverse side does NOT create its own join table.
+
+🔎 Database tables created:
+Table 1: citizen2
+citizen_id (PK)
+other columns...
+
+Table 2: property2
+property_id (PK)
+other columns...
+
+Table 3: property2_citizen2
+property2_id   (FK → property2)
+citizen2_id    (FK → citizen2)
+
+
+✔ Only ONE join table
+✔ Clean & correct relational design
+✔ No duplicate data
+
+❌ 2. OUTPUT / BEHAVIOR WITHOUT mappedBy
+
+If you remove mappedBy:
+
+In CitizenEntity:
+@ManyToMany
+List<PropertyEntity> property;
+
+In PropertyEntity:
+@ManyToMany
+List<CitizenEntity> citizen;
+
+❗Hibernate thinks BOTH sides are OWNING sides.
+
+So:
+
+❗ Two different join tables will be created
+
+citizen2_property2
+
+citizen2_id  (FK)
+property2_id (FK)
+
+
+property2_citizen2
+
+property2_id (FK)
+citizen2_id  (FK)
