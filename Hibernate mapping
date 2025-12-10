@@ -526,3 +526,66 @@ property2_citizen2
 
 property2_id (FK)
 citizen2_id  (FK)
+\
+
+
+What is HQL?
+HQL = Hibernate Query Language
+
+Definition:
+HQL is an object-oriented query language used to fetch data from the database using entity (class) names and entity fields, not table names or column names.
+
+Example:
+Query q = session.createQuery("from MinisterEntity");
+
+Key Points:
+
+Works with Java objects, not database tables.
+
+Portable across different databases.
+
+Uses entity name instead of table name.
+
+Uses entity variable names instead of column names.
+
+Example with condition:
+Query q = session.createQuery(
+    "from MinisterEntity where name = :n"
+);
+q.setParameter("n", "Siddaramayya");
+
+⭐ What is a Native SQL Query?
+Native SQL = Raw SQL query
+
+Definition:
+This is a normal SQL query written exactly like you write in MySQL, Oracle, PostgreSQL, etc.
+Hibernate sends this SQL directly to the database.
+
+Example:
+Query q = session.createNativeQuery("SELECT * FROM minister2");
+
+Key Points:
+
+Uses table names and column names.
+
+Database-specific.
+
+Not portable if you change DB vendors.
+
+Needed for complex SQL queries.
+
+Definition:
+Named queries are predefined, static, and reusable queries created using annotations inside an entity class.
+
+They are written once and reused many times using their query name.
+
+
+1. First-Level Cache (Session Cache):
+Scope: Associated with the Session object. Each Session has its own independent first-level cache.
+Enabled by Default: It is automatically enabled and requires no explicit configuration.
+Behavior: When an entity is loaded or persisted within a Session, it is stored in this cache. Subsequent requests for the same entity within the same Session will retrieve it from the cache, avoiding a database round trip.
+Limitations: Data in one Session's first-level cache is not accessible to other Sessions. It is cleared when the Session is closed.
+2. Second-Level Cache (SessionFactory Cache):
+Scope: Associated with the SessionFactory object, making it accessible across multiple Sessions within the application.
+Disabled by Default: Requires explicit configuration to enable and use.
+Behavior: Stores data that is frequently accessed and potentially shared across different Sessions. If an entity is not found in the first-level cache, Hibernate checks the second-level cache before querying the database.
