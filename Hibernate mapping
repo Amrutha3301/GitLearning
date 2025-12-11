@@ -1,0 +1,591 @@
+Entity relationships and ORM mapping
+One-to-one
+Definition: A one-to-one relationship means one row in Table A corresponds to exactly one row in Table B.
+
+In your code: MinisterEntity ↔ ProfileEntity
+
+Minister side:
+
+java
+@Entity
+@Table(name="minister2")
+public class MinisterEntity {
+    @OneToOne(mappedBy="ob")
+    ProfileEntity p1;
+}
+Profile side:
+
+java
+@Entity
+@Table(name="profile2")
+public class ProfileEntity {
+    @OneToOne
+    MinisterEntity ob;
+}
+Theory:
+
+The side with mappedBy is the inverse side; it doesn’t own the foreign key. Here, MinisterEntity is inverse; the owning side is ProfileEntity.
+
+On the owning side, Hibernate will maintain the foreign key column (by default, a join column to the minister’s primary key). If you want explicit control, you can add @JoinColumn(name="minister_id") on the owning side.
+
+For correct bidirectional linkage, set both references in code:
+
+profile.setOb(minister);
+
+minister.setP1(profile);
+
+One-to-many and many-to-one
+Definition: One-to-many means one parent has many children; many-to-one is the inverse relation where many children reference one parent.
+
+In your code: Student1Entity ↔ Marks1Entity
+
+One-to-many side:
+
+java
+@Entity
+@Table(name="stud1")
+public class Student1Entity {
+    @OneToMany(mappedBy="ob")
+    List<Marks1Entity> l1;
+}
+Many-to-one side:
+
+java
+@Entity
+@Table(name="marks1")
+public class Marks1Entity {
+    @ManyToOne
+    Student1Entity ob;
+}
+Theory:
+
+The owning side is the @ManyToOne (Marks1Entity), because it holds the foreign key column referencing the student.
+
+mappedBy="ob" on Student1Entity tells Hibernate the relationship is mapped by the ob property in Marks1Entity.
+
+For schema clarity, add @JoinColumn(name="student_id") on @ManyToOne to control the FK column name.
+
+Keeping both sides consistent in code avoids orphaned references:
+
+mark.setOb(student);
+
+student.getL1().add(mark);
+
+Optional: add cascade=CascadeType.ALL to @OneToMany to automatically persist/remove marks when the student is persisted/removed.
+
+Many-to-many
+Definition: Many-to-many means each side can reference multiple instances of the other side.
+
+In your code: CitizenEntity ↔ PropertyEntity
+
+Inverse side (Citizen):
+
+java
+@Entity
+@Table(name="citizen2")
+public class CitizenEntity {
+    @ManyToMany(mappedBy="citizen")
+    List<PropertyEntity> property;
+}
+Owning side (Property):
+
+java
+@Entity
+@Table(name="property2")
+public class PropertyEntity {
+    @ManyToMany
+    List<CitizenEntity> citizen;
+}
+Theory:
+
+Many-to-many uses a join table. The side without mappedBy is the owning side; here, PropertyEntity owns the relationship.
+
+You can explicitly define the join table:
+
+java
+@ManyToMany
+@JoinTable(
+  name="citizen_property",
+  joinColumns=@JoinColumn(name="property_id"),
+  inverseJoinColumns=@JoinColumn(name="citizen_id")
+)
+private List<CitizenEntity> citizen;
+Maintain both sides in code for consistency:
+
+property.getCitizen().add(citizen);
+
+citizen.getProperty().add(property);
+
+Caching in Hibernate
+First-level (Session) cache
+Definition: The first-level cache is built into Hibernate and scoped to a single Session. It stores entities loaded during the session and returns the same instance for repeated lookups.
+
+In your code (Demo9):
+
+java
+MinisterEntity m1 = session.get(MinisterEntity.class, "1");
+MinisterEntity m2 = session.get(MinisterEntity.class, "1");
+Theory:
+
+The second get call returns the cached entity without a DB hit (same session, same identifier).
+
+Evicted/cleared when the session is closed or session.clear() / session.evict(entity) is called.
+
+Second-level (SessionFactory) cache
+Definition: An optional, shared cache across sessions managed at the SessionFactory level. Requires a cache provider and configuration.
+
+In your code (MinisterEntity):
+
+java
+@Cacheable
+@Cache(usage=CacheConcurrencyStrategy.READ_WRITE)
+Theory:
+
+@Cacheable enables L2 caching for the entity if a cache provider is configured.
+
+READ_WRITE strategy ensures safe concurrent access with soft-locking semantics; good for frequently read, occasionally updated entities.
+
+L2 cache reduces DB hits across different sessions for the same entity data.
+
+Collections can also be cached with @Cache on the association, but be mindful of staleness and invalidation.
+
+Query languages and usage
+HQL (Hibernate Query Language)
+Definition: Object-oriented query language operating on entity names and properties, not table/column names.
+
+In your code (Demo10):
+
+java
+Query<MinisterEntity> q1 = session.createQuery("From MinisterEntity");
+Query<MinisterEntity> q2 = session.createQuery("From MinisterEntity where name=:name");
+q2.setParameter("name", "Siddaramayya");
+Theory:
+
+From MinisterEntity returns entity instances (SELECT is implicit for entity root).
+
+Parameters are named (:name) to prevent SQL injection and improve readability.
+
+HQL supports joins via associations, pagination (setFirstResult, setMaxResults), ordering, and projections.
+
+Native SQL queries
+Definition: Raw SQL queries sent directly to the database, bypassing HQL parsing.
+
+Usage pattern (theoretical in your context):
+
+java
+var q = session.createNativeQuery("SELECT id, name FROM minister2");
+List<Object[]> rows = q.getResultList();
+Theory:
+
+Best for DB-specific features or complex SQL not easily expressed in HQL.
+
+Can map results to entities (addEntity) or scalar projections; requires careful column naming and type handling.
+
+Named queries
+Definition: Predefined, reusable queries declared on entities, compiled/validated at startup (useful for consistency and performance).
+
+In your code (MinisterEntity):
+
+java
+@NamedQueries({
+  @NamedQuery(name="minister.q1", query="from MinisterEntity"),
+  @NamedQuery(name="minister.projection", query="SELECT m.id, m.name FROM MinisterEntity m")
+})
+Usage (Demo10):
+
+java
+Query<MinisterEntity> q3 = session.getNamedQuery("minister.q1");
+Query<Object[]> qProj = session.getNamedQuery("minister.projection");
+Theory:
+
+minister.q1 returns full entity instances.
+
+minister.projection returns a projection as Object[] aligned to the select list order.
+
+Named queries centralize query definitions and make refactoring safer.
+
+Projections and result handling
+Definition: Instead of returning full entities, select specific fields; results typically come as Object[] or can be mapped to DTOs.
+
+In your code (Demo10):
+
+java
+Query<Object[]> qProj = session.getNamedQuery("minister.projection");
+List<Object[]> results = qProj.list();
+for (Object[] row : results) {
+    String id = (String) row[0];
+    String name = (String) row[1];
+    System.out.println("ID: " + id + ", Name: " + name);
+}
+Theory:
+
+Projections reduce data transferred and avoid unnecessary entity initialization.
+
+Order in Object[] matches the SELECT clause.
+
+For type safety, consider constructor expressions in HQL:
+
+java
+@NamedQuery(
+  name="minister.dto",
+  query="SELECT new com.example.MinisterDTO(m.id, m.name) FROM MinisterEntity m"
+)
+DTO projections avoid manual casting and are easier to maintain.
+
+Best practices grounded in your code
+Define ownership explicitly: Use @JoinColumn on @ManyToOne and define join tables with @JoinTable for many-to-many to control schema and improve clarity.
+
+Maintain both sides of relationships: When adding/removing associations, update both ends (parent and child lists/references) to keep the persistence context consistent.
+
+Use cascades thoughtfully: Apply CascadeType.ALL on parent collections only when you want parent operations to propagate to children (e.g., student and marks).
+
+Leverage caching judiciously: Cache read-mostly entities like MinisterEntity to reduce DB load; be cautious with frequently updated data and large collections.
+
+Prefer named queries for reuse: Centralize common queries in entities to avoid duplication and gain startup-time validation.
+
+Use projections for performance: Fetch only the necessary columns when listing or reporting; use DTOs for type-safe results.
+
+If you want, I can extend this with a concise set of ER-style diagrams for your four relationships and show exact SQL DDL Hibernate typically generates for each mapping in your schema.
+
+@Entity @Table(name="minister2") public class MinisterEntity { @OneToOne(mappedBy="ob") ProfileEntity p1; } if you dont use mapped by here wha will happen
+Great question — this goes right to the heart of how ownership works in JPA/Hibernate relationships.
+
+📖 What mappedBy Means
+In a bidirectional relationship, one side is the owning side and the other is the inverse side.
+
+The owning side is the one that actually has the foreign key column in the database.
+
+mappedBy="ob" tells Hibernate: “This side (MinisterEntity) is not the owner. The foreign key is managed by the other side (ProfileEntity.ob).”
+
+🔹 If You Remove mappedBy
+java
+@Entity
+@Table(name="minister2")
+public class MinisterEntity {
+    @OneToOne
+    ProfileEntity p1;
+}
+Hibernate will now treat both sides (MinisterEntity and ProfileEntity) as owning sides.
+
+Result: Hibernate will try to create two foreign keys:
+
+One in the minister2 table pointing to profile2.
+
+One in the profile2 table pointing to minister2.
+
+This leads to redundant columns and potentially a join table depending on configuration.
+
+It also causes confusion: Hibernate doesn’t know which side controls the relationship, so updates may not propagate correctly.
+
+✅ Correct Usage
+Use mappedBy on the inverse side (the one that doesn’t hold the foreign key).
+
+In your case:
+
+ProfileEntity owns the relationship (it has the FK to minister).
+
+MinisterEntity is the inverse side, so it uses mappedBy="ob".
+
+🔹 Summary
+With mappedBy → One foreign key column in profile2 table, clean schema, clear ownership.
+
+Without mappedBy → Hibernate creates extra foreign key(s) or a join table, leading to redundant schema and possible update issues.
+
+👉 Would you like me to show you the actual SQL schema Hibernate generates in both cases (with and without mappedBy) so you can see the difference clearly?
+
+with and without mapped by what will the output be
+This is all about ownership of the relationship in JPA/Hibernate. Let’s break it down clearly:
+
+📖 With mappedBy
+java
+@Entity
+@Table(name="minister2")
+public class MinisterEntity {
+    @OneToOne(mappedBy="ob")
+    ProfileEntity p1;
+}
+Owning side: ProfileEntity (it has the field MinisterEntity ob;).
+
+Inverse side: MinisterEntity (declares mappedBy="ob").
+
+Schema generated:
+
+Table minister2 → columns: id, name (no foreign key to profile).
+
+Table profile2 → columns: profileid, profilename, plus a foreign key column (e.g. minister_id) referencing minister2.id.
+
+Output when persisting:
+
+Only one foreign key column exists (in profile2).
+
+Relationship is clean: one profile row points to one minister row.
+
+📖 Without mappedBy
+java
+@Entity
+@Table(name="minister2")
+public class MinisterEntity {
+    @OneToOne
+    ProfileEntity p1;
+}
+Owning side: Hibernate now thinks both sides are owning sides.
+
+Schema generated:
+
+Table minister2 → columns: id, name, plus a foreign key column (e.g. profile_id) referencing profile2.profileid.
+
+Table profile2 → columns: profileid, profilename, plus a foreign key column (e.g. minister_id) referencing minister2.id.
+
+Output when persisting:
+
+Two foreign keys are created, one in each table.
+
+This is redundant and can cause confusion or even a join table depending on provider defaults.
+
+Updates may not propagate correctly because Hibernate doesn’t know which side “owns” the relationship.
+
+✅ Summary
+With mappedBy → One foreign key column in the owning side’s table (profile2). Clean, single link.
+
+Without mappedBy → Hibernate generates foreign keys on both tables (or a join table), leading to redundant schema and possible inconsistencies.
+
+👉 Would you like me to show you the actual SQL DDL Hibernate generates in both cases (with and without mappedBy) so you can see the difference in table structures side by side?
+
+@Entity @Table(name="stud1") public class Student1Entity { @OneToMany(mappedBy="ob") List<Marks1Entity> l1; } if you dont use mapped by here wha will happen
+Excellent question — this goes right to the ownership of relationships in JPA/Hibernate.
+
+📖 What mappedBy Does
+In a bidirectional relationship, one side is the owning side (it has the foreign key column in the database).
+
+The other side is the inverse side (it just mirrors the relationship).
+
+mappedBy="ob" tells Hibernate: “This @OneToMany is mapped by the ob field in Marks1Entity. The foreign key lives in the marks1 table, not in stud1.”
+
+So in your code:
+
+java
+@Entity
+@Table(name="stud1")
+public class Student1Entity {
+    @OneToMany(mappedBy="ob")
+    List<Marks1Entity> l1;
+}
+The foreign key column (student_id) will be created in the marks1 table.
+
+The stud1 table will not get an extra column for this relationship.
+
+🔹 If You Remove mappedBy
+java
+@Entity
+@Table(name="stud1")
+public class Student1Entity {
+    @OneToMany
+    List<Marks1Entity> l1;
+}
+Hibernate now thinks Student1Entity owns the relationship.
+
+Since Marks1Entity also has @ManyToOne Student1Entity ob;, Hibernate sees two owning sides.
+
+Result:
+
+Hibernate will create a join table (e.g. stud1_marks1) to manage the association.
+
+You’ll end up with:
+
+stud1 table
+
+marks1 table (with its own FK to student if you kept @ManyToOne)
+
+plus an extra join table linking them
+
+This is redundant and not what you want for a simple one-to-many.
+
+✅ Summary
+With mappedBy → Clean schema: one foreign key column in marks1 pointing to stud1.
+
+Without mappedBy → Hibernate creates an unnecessary join table (or duplicate foreign keys), because it doesn’t know which side owns the relationship.
+
+👉 Would you like me to show you the actual SQL DDL Hibernate generates in both cases (with and without mappedBy) so you can see the difference in table structures side by side?
+
+with and without mapped by what will the output be
+Let’s make this crystal clear by comparing with mappedBy vs without mappedBy in Hibernate for your @OneToMany example (Student1Entity ↔ Marks1Entity):
+
+✅ With mappedBy
+java
+@Entity
+@Table(name="stud1")
+public class Student1Entity {
+    @OneToMany(mappedBy="ob")
+    List<Marks1Entity> l1;
+}
+Owning side: Marks1Entity (@ManyToOne Student1Entity ob;)
+
+Inverse side: Student1Entity (declares mappedBy="ob")
+
+Schema generated:
+
+stud1 → columns: sid, name
+
+marks1 → columns: id1, testno, marks, plus a foreign key column (e.g. student_id) referencing stud1.sid
+
+Output when persisting:
+
+Only one foreign key column exists (in marks1).
+
+Relationship is clean: each marks row points to one student.
+
+❌ Without mappedBy
+java
+@Entity
+@Table(name="stud1")
+public class Student1Entity {
+    @OneToMany
+    List<Marks1Entity> l1;
+}
+Hibernate now thinks Student1Entity owns the relationship.
+
+Since Marks1Entity also has @ManyToOne Student1Entity ob;, Hibernate sees two owning sides.
+
+Schema generated:
+
+stud1 → columns: sid, name
+
+marks1 → columns: id1, testno, marks, plus a foreign key column (e.g. student_id)
+
+Extra join table → e.g. stud1_marks1 with two columns: stud1_id and marks1_id
+
+Output when persisting:
+
+Hibernate inserts into the join table to link students and marks.
+
+Redundant: you now have both a foreign key in marks1 and a join table linking the same entities.
+
+
+1. OUTPUT / BEHAVIOR WITH mappedBy
+✔ Only ONE join table is created
+
+Hibernate will create the join table ONLY on the owning side (Property).
+
+Generated Join Table
+property2_citizen2
+---------------------------
+property2_id   (FK)
+citizen2_id    (FK)
+
+Why?
+
+PropertyEntity is the owning side.
+
+CitizenEntity is the inverse side because of mappedBy.
+
+Inverse side does NOT create its own join table.
+
+🔎 Database tables created:
+Table 1: citizen2
+citizen_id (PK)
+other columns...
+
+Table 2: property2
+property_id (PK)
+other columns...
+
+Table 3: property2_citizen2
+property2_id   (FK → property2)
+citizen2_id    (FK → citizen2)
+
+
+✔ Only ONE join table
+✔ Clean & correct relational design
+✔ No duplicate data
+
+❌ 2. OUTPUT / BEHAVIOR WITHOUT mappedBy
+
+If you remove mappedBy:
+
+In CitizenEntity:
+@ManyToMany
+List<PropertyEntity> property;
+
+In PropertyEntity:
+@ManyToMany
+List<CitizenEntity> citizen;
+
+❗Hibernate thinks BOTH sides are OWNING sides.
+
+So:
+
+❗ Two different join tables will be created
+
+citizen2_property2
+
+citizen2_id  (FK)
+property2_id (FK)
+
+
+property2_citizen2
+
+property2_id (FK)
+citizen2_id  (FK)
+\
+
+
+What is HQL?
+HQL = Hibernate Query Language
+
+Definition:
+HQL is an object-oriented query language used to fetch data from the database using entity (class) names and entity fields, not table names or column names.
+
+Example:
+Query q = session.createQuery("from MinisterEntity");
+
+Key Points:
+
+Works with Java objects, not database tables.
+
+Portable across different databases.
+
+Uses entity name instead of table name.
+
+Uses entity variable names instead of column names.
+
+Example with condition:
+Query q = session.createQuery(
+    "from MinisterEntity where name = :n"
+);
+q.setParameter("n", "Siddaramayya");
+
+⭐ What is a Native SQL Query?
+Native SQL = Raw SQL query
+
+Definition:
+This is a normal SQL query written exactly like you write in MySQL, Oracle, PostgreSQL, etc.
+Hibernate sends this SQL directly to the database.
+
+Example:
+Query q = session.createNativeQuery("SELECT * FROM minister2");
+
+Key Points:
+
+Uses table names and column names.
+
+Database-specific.
+
+Not portable if you change DB vendors.
+
+Needed for complex SQL queries.
+
+Definition:
+Named queries are predefined, static, and reusable queries created using annotations inside an entity class.
+
+They are written once and reused many times using their query name.
+
+
+1. First-Level Cache (Session Cache):
+Scope: Associated with the Session object. Each Session has its own independent first-level cache.
+Enabled by Default: It is automatically enabled and requires no explicit configuration.
+Behavior: When an entity is loaded or persisted within a Session, it is stored in this cache. Subsequent requests for the same entity within the same Session will retrieve it from the cache, avoiding a database round trip.
+Limitations: Data in one Session's first-level cache is not accessible to other Sessions. It is cleared when the Session is closed.
+2. Second-Level Cache (SessionFactory Cache):
+Scope: Associated with the SessionFactory object, making it accessible across multiple Sessions within the application.
+Disabled by Default: Requires explicit configuration to enable and use.
+Behavior: Stores data that is frequently accessed and potentially shared across different Sessions. If an entity is not found in the first-level cache, Hibernate checks the second-level cache before querying the database.
