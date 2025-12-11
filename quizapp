@@ -1,0 +1,943 @@
+Database initialization (run in MySQL)
+sql
+CREATE DATABASE IF NOT EXISTS quizdb;
+USE quizdb;
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(80) NOT NULL,
+    email VARCHAR(120) NOT NULL UNIQUE,
+    password VARCHAR(120) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (name, email, password) VALUES
+('John Carter', 'john@gmail.com', 'john123'),
+('Mia Stone', 'mia@gmail.com', 'mia123'),
+('David Ray', 'david@gmail.com', 'david123'),
+('Sara Khan', 'sara@gmail.com', 'sara123'),
+('Mike Tyson', 'mike@gmail.com', 'mike123');
+
+CREATE TABLE admin (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(80) NOT NULL,
+    email VARCHAR(120) NOT NULL UNIQUE,
+    password VARCHAR(120) NOT NULL
+);
+
+INSERT INTO admin (name, email, password) VALUES
+('Super Admin', 'admin@quiz.com', 'admin123');
+
+CREATE TABLE questions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    question_text VARCHAR(500) NOT NULL,
+    option_a VARCHAR(200),
+    option_b VARCHAR(200),
+    option_c VARCHAR(200),
+    option_d VARCHAR(200),
+    correct_option CHAR(1) NOT NULL,
+    category VARCHAR(50) NOT NULL
+);
+
+INSERT INTO questions (question_text, option_a, option_b, option_c, option_d, correct_option, category)
+VALUES
+('What does DNA stand for?', 'Adenine', 'Deoxyribonucleic Acid', 'Glucose', 'Protein', 'B', 'SCIENCE'),
+('How many bones are in the human body?', '200', '157', '209', '206', 'D', 'SCIENCE'),
+('What is the hardest natural substance on Earth?', 'Gold', 'Diamond', 'Copper', 'Silver', 'B', 'SCIENCE'),
+('What planet is known as the Red Planet?', 'Earth', 'Mars', 'Jupiter', 'Venus', 'B', 'SCIENCE'),
+('What gas do plants absorb?', 'Oxygen', 'Hydrogen', 'Carbon Dioxide', 'Nitrogen', 'C', 'SCIENCE');
+
+CREATE TABLE quiz (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(120) NOT NULL,
+    category VARCHAR(50) NOT NULL
+);
+
+INSERT INTO quiz (title, category) VALUES
+('Basic Science Quiz', 'SCIENCE'),
+('Advanced Science Quiz', 'SCIENCE');
+
+CREATE TABLE quiz_questions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    quiz_id INT NOT NULL,
+    question_id INT NOT NULL,
+    FOREIGN KEY (quiz_id) REFERENCES quiz(id),
+    FOREIGN KEY (question_id) REFERENCES questions(id)
+);
+
+INSERT INTO quiz_questions (quiz_id, question_id) VALUES
+(1, 1),
+(1, 2),
+(1, 3),
+(2, 2),
+(2, 3),
+(2, 4),
+(2, 5);
+
+CREATE TABLE quiz_results (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    quiz_id INT NOT NULL,
+    score INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (quiz_id) REFERENCES quiz(id)
+);
+
+INSERT INTO quiz_results (user_id, quiz_id, score) VALUES
+(1, 1, 2),
+(2, 1, 3),
+(3, 1, 1),
+(4, 2, 3),
+(5, 2, 4);
+Configuration
+DBUtil.java
+java
+package com.quiz.config;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+
+public class DBUtil {
+    private static final String URL = "jdbc:mysql://localhost:3306/quizdb?useSSL=false&serverTimezone=UTC";
+    private static final String USER = "root";     // TODO: change
+    private static final String PASS = "password"; // TODO: change
+
+    static {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load MySQL driver", e);
+        }
+    }
+
+    public static Connection getConnection() throws Exception {
+        return DriverManager.getConnection(URL, USER, PASS);
+    }
+}
+Models
+User.java
+java
+package com.quiz.model;
+
+public class User {
+    private int id;
+    private String name;
+    private String email;
+    private String password;
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+}
+Admin.java
+java
+package com.quiz.model;
+
+public class Admin {
+    private int id;
+    private String name;
+    private String email;
+    private String password;
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+}
+Question.java
+java
+package com.quiz.model;
+
+public class Question {
+    private int id;
+    private String questionText;
+    private String optionA, optionB, optionC, optionD;
+    private char correctOption;
+    private String category;
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public String getQuestionText() { return questionText; }
+    public void setQuestionText(String questionText) { this.questionText = questionText; }
+    public String getOptionA() { return optionA; }
+    public void setOptionA(String optionA) { this.optionA = optionA; }
+    public String getOptionB() { return optionB; }
+    public void setOptionB(String optionB) { this.optionB = optionB; }
+    public String getOptionC() { return optionC; }
+    public void setOptionC(String optionC) { this.optionC = optionC; }
+    public String getOptionD() { return optionD; }
+    public void setOptionD(String optionD) { this.optionD = optionD; }
+    public char getCorrectOption() { return correctOption; }
+    public void setCorrectOption(char correctOption) { this.correctOption = correctOption; }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+}
+Quiz.java
+java
+package com.quiz.model;
+
+public class Quiz {
+    private int id;
+    private String title;
+    private String category;
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
+}
+QuizResult.java
+java
+package com.quiz.model;
+
+import java.sql.Timestamp;
+
+public class QuizResult {
+    private int id;
+    private int userId;
+    private int quizId;
+    private int score;
+    private Timestamp createdAt;
+
+    public int getId() { return id; }
+    public void setId(int id) { this.id = id; }
+    public int getUserId() { return userId; }
+    public void setUserId(int userId) { this.userId = userId; }
+    public int getQuizId() { return quizId; }
+    public void setQuizId(int quizId) { this.quizId = quizId; }
+    public int getScore() { return score; }
+    public void setScore(int score) { this.score = score; }
+    public Timestamp getCreatedAt() { return createdAt; }
+    public void setCreatedAt(Timestamp createdAt) { this.createdAt = createdAt; }
+}
+DAOs
+UserDAO.java
+java
+package com.quiz.dao;
+
+import com.quiz.config.DBUtil;
+import com.quiz.model.User;
+import java.sql.*;
+
+public class UserDAO {
+    public User findByEmailAndPassword(String email, String password) throws Exception {
+        String sql = "SELECT * FROM users WHERE email=? AND password=?";
+        try (Connection con = DBUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setString(2, password);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    User u = new User();
+                    u.setId(rs.getInt("id"));
+                    u.setName(rs.getString("name"));
+                    u.setEmail(rs.getString("email"));
+                    u.setPassword(rs.getString("password"));
+                    return u;
+                }
+                return null;
+            }
+        }
+    }
+
+    public int countUsers() throws Exception {
+        try (Connection con = DBUtil.getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM users")) {
+            rs.next();
+            return rs.getInt(1);
+        }
+    }
+}
+AdminDAO.java
+java
+package com.quiz.dao;
+
+import com.quiz.config.DBUtil;
+import com.quiz.model.Admin;
+import java.sql.*;
+
+public class AdminDAO {
+    public Admin findByEmailAndPassword(String email, String password) throws Exception {
+        String sql = "SELECT * FROM admin WHERE email=? AND password=?";
+        try (Connection con = DBUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setString(2, password);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Admin a = new Admin();
+                    a.setId(rs.getInt("id"));
+                    a.setName(rs.getString("name"));
+                    a.setEmail(rs.getString("email"));
+                    a.setPassword(rs.getString("password"));
+                    return a;
+                }
+                return null;
+            }
+        }
+    }
+}
+QuestionDAO.java
+java
+package com.quiz.dao;
+
+import com.quiz.config.DBUtil;
+import com.quiz.model.Question;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class QuestionDAO {
+
+    public List<Question> listByQuiz(int quizId) throws Exception {
+        String sql = "SELECT q.* FROM questions q JOIN quiz_questions qq ON q.id=qq.question_id WHERE qq.quiz_id=?";
+        try (Connection con = DBUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, quizId);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<Question> list = new ArrayList<>();
+                while (rs.next()) list.add(map(rs));
+                return list;
+            }
+        }
+    }
+
+    private Question map(ResultSet rs) throws Exception {
+        Question q = new Question();
+        q.setId(rs.getInt("id"));
+        q.setQuestionText(rs.getString("question_text"));
+        q.setOptionA(rs.getString("option_a"));
+        q.setOptionB(rs.getString("option_b"));
+        q.setOptionC(rs.getString("option_c"));
+        q.setOptionD(rs.getString("option_d"));
+        q.setCorrectOption(rs.getString("correct_option").charAt(0));
+        q.setCategory(rs.getString("category"));
+        return q;
+    }
+
+    public int countQuestions() throws Exception {
+        try (Connection con = DBUtil.getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM questions")) {
+            rs.next();
+            return rs.getInt(1);
+        }
+    }
+}
+QuizDAO.java
+java
+package com.quiz.dao;
+
+import com.quiz.config.DBUtil;
+import com.quiz.model.Quiz;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class QuizDAO {
+
+    public List<Quiz> listAll() throws Exception {
+        String sql = "SELECT * FROM quiz";
+        try (Connection con = DBUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            List<Quiz> list = new ArrayList<>();
+            while (rs.next()) list.add(map(rs));
+            return list;
+        }
+    }
+
+    public Quiz findById(int id) throws Exception {
+        String sql = "SELECT * FROM quiz WHERE id=?";
+        try (Connection con = DBUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? map(rs) : null;
+            }
+        }
+    }
+
+    private Quiz map(ResultSet rs) throws SQLException {
+        Quiz q = new Quiz();
+        q.setId(rs.getInt("id"));
+        q.setTitle(rs.getString("title"));
+        q.setCategory(rs.getString("category"));
+        return q;
+    }
+
+    public int countQuizzes() throws Exception {
+        try (Connection con = DBUtil.getConnection();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM quiz")) {
+            rs.next();
+            return rs.getInt(1);
+        }
+    }
+}
+ResultDAO.java
+java
+package com.quiz.dao;
+
+import com.quiz.config.DBUtil;
+import com.quiz.model.QuizResult;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ResultDAO {
+
+    public void saveResult(int userId, int quizId, int score) throws Exception {
+        String sql = "INSERT INTO quiz_results (user_id, quiz_id, score) VALUES (?, ?, ?)";
+        try (Connection con = DBUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setInt(2, quizId);
+            ps.setInt(3, score);
+            ps.executeUpdate();
+        }
+    }
+
+    public List<QuizResult> leaderboard(int quizId) throws Exception {
+        String sql = "SELECT * FROM quiz_results WHERE quiz_id=? ORDER BY score DESC, created_at ASC";
+        try (Connection con = DBUtil.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, quizId);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<QuizResult> list = new ArrayList<>();
+                while (rs.next()) {
+                    QuizResult r = new QuizResult();
+                    r.setId(rs.getInt("id"));
+                    r.setUserId(rs.getInt("user_id"));
+                    r.setQuizId(rs.getInt("quiz_id"));
+                    r.setScore(rs.getInt("score"));
+                    r.setCreatedAt(rs.getTimestamp("created_at"));
+                    list.add(r);
+                }
+                return list;
+            }
+        }
+    }
+}
+Servlets (clean URLs + forwarding)
+AuthServlet.java
+java
+package com.quiz.web;
+
+import com.quiz.dao.UserDAO;
+import com.quiz.dao.AdminDAO;
+import com.quiz.model.User;
+import com.quiz.model.Admin;
+
+import javax.servlet.*;
+import javax.servlet.http.*;
+import javax.servlet.annotation.*;
+import java.io.IOException;
+
+@WebServlet(urlPatterns = {"/login", "/logout"})
+public class AuthServlet extends HttpServlet {
+    private final UserDAO userDAO = new UserDAO();
+    private final AdminDAO adminDAO = new AdminDAO();
+
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if ("/logout".equals(req.getServletPath())) {
+            req.getSession().invalidate();
+            resp.sendRedirect(req.getContextPath() + "/");
+            return;
+        }
+        req.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(req, resp);
+    }
+
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
+        String role = req.getParameter("role"); // user|admin
+        String email = req.getParameter("email");
+        String password = req.getParameter("password");
+
+        try {
+            HttpSession session = req.getSession();
+            if ("admin".equals(role)) {
+                Admin a = adminDAO.findByEmailAndPassword(email, password);
+                if (a != null) {
+                    session.setAttribute("admin", a);
+                    resp.sendRedirect(req.getContextPath() + "/dashboard");
+                } else {
+                    req.setAttribute("error", "Invalid admin credentials");
+                    req.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(req, resp);
+                }
+            } else {
+                User u = userDAO.findByEmailAndPassword(email, password);
+                if (u != null) {
+                    session.setAttribute("user", u);
+                    resp.sendRedirect(req.getContextPath() + "/quizzes");
+                } else {
+                    req.setAttribute("error", "Invalid user credentials");
+                    req.getRequestDispatcher("/WEB-INF/views/login.jsp").forward(req, resp);
+                }
+            }
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
+    }
+}
+AdminDashboardServlet.java
+java
+package com.quiz.web;
+
+import com.quiz.dao.QuestionDAO;
+import com.quiz.dao.QuizDAO;
+import com.quiz.dao.UserDAO;
+
+import javax.servlet.*;
+import javax.servlet.http.*;
+import javax.servlet.annotation.*;
+import java.io.IOException;
+
+@WebServlet("/dashboard")
+public class AdminDashboardServlet extends HttpServlet {
+    private final QuizDAO quizDAO = new QuizDAO();
+    private final QuestionDAO questionDAO = new QuestionDAO();
+    private final UserDAO userDAO = new UserDAO();
+
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if (req.getSession().getAttribute("admin") == null) {
+            resp.sendRedirect(req.getContextPath() + "/login");
+            return;
+        }
+        try {
+            req.setAttribute("totalQuizzes", quizDAO.countQuizzes());
+            req.setAttribute("totalQuestions", questionDAO.countQuestions());
+            req.setAttribute("totalUsers", userDAO.countUsers());
+            req.getRequestDispatcher("/WEB-INF/views/admin-dashboard.jsp").forward(req, resp);
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
+    }
+}
+ListQuizzesServlet.java
+java
+package com.quiz.web;
+
+import com.quiz.dao.QuizDAO;
+import com.quiz.model.Quiz;
+
+import javax.servlet.*;
+import javax.servlet.http.*;
+import javax.servlet.annotation.*;
+import java.io.IOException;
+import java.util.List;
+
+@WebServlet("/quizzes")
+public class ListQuizzesServlet extends HttpServlet {
+    private final QuizDAO quizDAO = new QuizDAO();
+
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        User user = (User) req.getSession().getAttribute("user");
+        if (user == null && req.getSession().getAttribute("admin") == null) {
+            resp.sendRedirect(req.getContextPath() + "/login");
+            return;
+        }
+        try {
+            List<Quiz> quizzes = quizDAO.listAll();
+            req.setAttribute("quizzes", quizzes);
+            req.getRequestDispatcher("/WEB-INF/views/quizzes.jsp").forward(req, resp);
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
+    }
+
+    // import model.User at top
+    static class User extends com.quiz.model.User {}
+}
+AttemptQuizServlet.java
+java
+package com.quiz.web;
+
+import com.quiz.dao.QuestionDAO;
+import com.quiz.dao.QuizDAO;
+import com.quiz.model.Question;
+import com.quiz.model.Quiz;
+
+import javax.servlet.*;
+import javax.servlet.http.*;
+import javax.servlet.annotation.*;
+import java.io.IOException;
+import java.util.List;
+
+@WebServlet("/attempt")
+public class AttemptQuizServlet extends HttpServlet {
+    private final QuestionDAO questionDAO = new QuestionDAO();
+    private final QuizDAO quizDAO = new QuizDAO();
+
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        if (req.getSession().getAttribute("user") == null) {
+            resp.sendRedirect(req.getContextPath() + "/login");
+            return;
+        }
+        int quizId = Integer.parseInt(req.getParameter("id"));
+        try {
+            Quiz quiz = quizDAO.findById(quizId);
+            List<Question> questions = questionDAO.listByQuiz(quizId);
+            req.setAttribute("quiz", quiz);
+            req.setAttribute("questions", questions);
+            req.getRequestDispatcher("/WEB-INF/views/attempt.jsp").forward(req, resp);
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
+    }
+}
+SubmitQuizServlet.java
+java
+package com.quiz.web;
+
+import com.quiz.dao.ResultDAO;
+import com.quiz.dao.QuestionDAO;
+import com.quiz.model.Question;
+import com.quiz.model.User;
+
+import javax.servlet.*;
+import javax.servlet.http.*;
+import javax.servlet.annotation.*;
+import java.io.IOException;
+import java.util.List;
+
+@WebServlet("/submit")
+public class SubmitQuizServlet extends HttpServlet {
+    private final ResultDAO resultDAO = new ResultDAO();
+    private final QuestionDAO questionDAO = new QuestionDAO();
+
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        User user = (User) req.getSession().getAttribute("user");
+        if (user == null) {
+            resp.sendRedirect(req.getContextPath() + "/login");
+            return;
+        }
+        int quizId = Integer.parseInt(req.getParameter("quizId"));
+        try {
+            List<Question> questions = questionDAO.listByQuiz(quizId);
+            int score = 0;
+            for (Question q : questions) {
+                String ans = req.getParameter("q_" + q.getId());
+                if (ans != null && ans.length() == 1 && Character.toUpperCase(ans.charAt(0)) == q.getCorrectOption()) {
+                    score++;
+                }
+            }
+            resultDAO.saveResult(user.getId(), quizId, score);
+            req.setAttribute("score", score);
+            req.setAttribute("total", questions.size());
+            req.setAttribute("quizId", quizId);
+            req.getRequestDispatcher("/WEB-INF/views/result.jsp").forward(req, resp);
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
+    }
+}
+LeaderboardServlet.java
+java
+package com.quiz.web;
+
+import com.quiz.dao.ResultDAO;
+import com.quiz.model.QuizResult;
+
+import javax.servlet.*;
+import javax.servlet.http.*;
+import javax.servlet.annotation.*;
+import java.io.IOException;
+import java.util.List;
+
+@WebServlet("/leaderboard")
+public class LeaderboardServlet extends HttpServlet {
+    private final ResultDAO resultDAO = new ResultDAO();
+
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        int quizId = Integer.parseInt(req.getParameter("quizId"));
+        try {
+            List<QuizResult> lb = resultDAO.leaderboard(quizId);
+            req.setAttribute("leaderboard", lb);
+            req.getRequestDispatcher("/WEB-INF/views/leaderboard.jsp").forward(req, resp);
+        } catch (Exception e) {
+            throw new ServletException(e);
+        }
+    }
+}
+JSP views
+index.jsp (public welcome)
+jsp
+<%@ page contentType="text/html;charset=UTF-8" %>
+<!DOCTYPE html>
+<html><head><title>Quiz Portal</title></head>
+<body>
+<h1>Welcome to the Quiz Portal</h1>
+<a href="${pageContext.request.contextPath}/login">Login</a>
+</body></html>
+login.jsp
+jsp
+<%@ page contentType="text/html;charset=UTF-8" %>
+<%@ taglib uri="http://jakarta.ee/jsp/jstl/core" prefix="c" %>
+<!DOCTYPE html>
+<html><head><title>Login</title></head>
+<body>
+<h2>Login</h2>
+<form method="post" action="${pageContext.request.contextPath}/login">
+  <label>Role:
+    <select name="role">
+      <option value="user">User</option>
+      <option value="admin">Admin</option>
+    </select>
+  </label><br/>
+  <label>Email: <input type="email" name="email" required></label><br/>
+  <label>Password: <input type="password" name="password" required></label><br/>
+  <button type="submit">Login</button>
+</form>
+<c:if test="${not empty error}">
+  <p style="color:red">${error}</p>
+</c:if>
+</body></html>
+admin-dashboard.jsp
+jsp
+<%@ page contentType="text/html;charset=UTF-8" %>
+<!DOCTYPE html>
+<html><head><title>Admin Dashboard</title></head>
+<body>
+<h2>Admin Dashboard</h2>
+<p>Total Quizzes: ${totalQuizzes}</p>
+<p>Total Questions: ${totalQuestions}</p>
+<p>Total Users: ${totalUsers}</p>
+<a href="${pageContext.request.contextPath}/quizzes">View Quizzes</a> |
+<a href="${pageContext.request.contextPath}/logout">Logout</a>
+</body></html>
+quizzes.jsp
+jsp
+<%@ page contentType="text/html;charset=UTF-8" %>
+<%@ page import="java.util.List,com.quiz.model.Quiz" %>
+<%
+List<Quiz> quizzes = (List<Quiz>) request.getAttribute("quizzes");
+%>
+<!DOCTYPE html>
+<html><head><title>Quizzes</title></head>
+<body>
+<h2>Available Quizzes</h2>
+<ul>
+<% for (Quiz q : quizzes) { %>
+  <li>
+    <%= q.getTitle() %> (<%= q.getCategory() %>)
+    <a href="${pageContext.request.contextPath}/attempt?id=<%=q.getId()%>">Attempt</a>
+  </li>
+<% } %>
+</ul>
+<a href="${pageContext.request.contextPath}/logout">Logout</a>
+</body></html>
+attempt.jsp
+jsp
+<%@ page contentType="text/html;charset=UTF-8" %>
+<%@ page import="java.util.List,com.quiz.model.Question,com.quiz.model.Quiz" %>
+<%
+Quiz quiz = (Quiz) request.getAttribute("quiz");
+List<Question> questions = (List<Question>) request.getAttribute("questions");
+%>
+<!DOCTYPE html>
+<html><head><title>Attempt - <%=quiz.getTitle()%></title></head>
+<body>
+<h2><%= quiz.getTitle() %></h2>
+<form method="post" action="${pageContext.request.contextPath}/submit">
+<input type="hidden" name="quizId" value="<%=quiz.getId()%>" />
+<% int i=1; for (Question q : questions) { %>
+  <p><b>Q<%=i++%>:</b> <%= q.getQuestionText() %></p>
+  <label><input type="radio" name="q_<%=q.getId()%>" value="A"> <%= q.getOptionA() %></label><br/>
+  <label><input type="radio" name="q_<%=q.getId()%>" value="B"> <%= q.getOptionB() %></label><br/>
+  <label><input type="radio" name="q_<%=q.getId()%>" value="C"> <%= q.getOptionC() %></label><br/>
+  <label><input type="radio" name="q_<%=q.getId()%>" value="D"> <%= q.getOptionD() %></label><br/>
+  <hr/>
+<% } %>
+<button type="submit">Submit</button>
+</form>
+</body></html>
+result.jsp
+jsp
+<%@ page contentType="text/html;charset=UTF-8" %>
+<!DOCTYPE html>
+<html><head><title>Result</title></head>
+<body>
+<h2>Your Score: ${score} / ${total}</h2>
+<a href="${pageContext.request.contextPath}/leaderboard?quizId=${quizId}">View Leaderboard</a>
+</body></html>
+leaderboard.jsp
+jsp
+<%@ page contentType="text/html;charset=UTF-8" %>
+<%@ page import="java.util.List,com.quiz.model.QuizResult" %>
+<%
+List<QuizResult> leaderboard = (List<QuizResult>) request.getAttribute("leaderboard");
+%>
+<!DOCTYPE html>
+<html><head><title>Leaderboard</title></head>
+<body>
+<h2>Leaderboard</h2>
+<table border="1" cellpadding="6">
+  <tr><th>Rank</th><th>User ID</th><th>Score</th><th>Time</th></tr>
+  <% int rank=1; for (QuizResult r : leaderboard) { %>
+    <tr>
+      <td><%= rank++ %></td>
+      <td><%= r.getUserId() %></td>
+      <td><%= r.getScore() %></td>
+      <td><%= r.getCreatedAt() %></td>
+    </tr>
+  <% } %>
+</table>
+<a href="${pageContext.request.contextPath}/quizzes">Back to Quizzes</a>
+</body></html>
+web.xml (clean URL mappings, hides JSPs)
+xml
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="https://jakarta.ee/xml/ns/jakartaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         version="5.0"
+         xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/web-app_5_0.xsd">
+
+  <display-name>Quiz Portal</display-name>
+
+  <welcome-file-list>
+    <welcome-file>index.jsp</welcome-file>
+  </welcome-file-list>
+
+  <servlet>
+    <servlet-name>AuthServlet</servlet-name>
+    <servlet-class>com.quiz.web.AuthServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>AuthServlet</servlet-name>
+    <url-pattern>/login</url-pattern>
+    <url-pattern>/logout</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+    <servlet-name>AdminDashboardServlet</servlet-name>
+    <servlet-class>com.quiz.web.AdminDashboardServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>AdminDashboardServlet</servlet-name>
+    <url-pattern>/dashboard</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+    <servlet-name>ListQuizzesServlet</servlet-name>
+    <servlet-class>com.quiz.web.ListQuizzesServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>ListQuizzesServlet</servlet-name>
+    <url-pattern>/quizzes</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+    <servlet-name>AttemptQuizServlet</servlet-name>
+    <servlet-class>com.quiz.web.AttemptQuizServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>AttemptQuizServlet</servlet-name>
+    <url-pattern>/attempt</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+    <servlet-name>SubmitQuizServlet</servlet-name>
+    <servlet-class>com.quiz.web.SubmitQuizServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>SubmitQuizServlet</servlet-name>
+    <url-pattern>/submit</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+    <servlet-name>LeaderboardServlet</servlet-name>
+    <servlet-class>com.quiz.web.LeaderboardServlet</servlet-class>
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>LeaderboardServlet</servlet-name>
+    <url-pattern>/leaderboard</url-pattern>
+  </servlet-mapping>
+
+</web-app>
+Optional Maven pom.xml (Tomcat 9+ / Jakarta JSTL)
+xml
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.quiz</groupId>
+  <artifactId>quiz-portal</artifactId>
+  <version>1.0.0</version>
+  <packaging>war</packaging>
+
+  <properties>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>jakarta.servlet</groupId>
+      <artifactId>jakarta.servlet-api</artifactId>
+      <version>5.0.0</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-j</artifactId>
+      <version>8.3.0</version>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.servlet.jsp.jstl</groupId>
+      <artifactId>jakarta.servlet.jsp.jstl-api</artifactId>
+      <version>2.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish.web</groupId>
+      <artifactId>jakarta.servlet.jsp.jstl</artifactId>
+      <version>2.0.0</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <artifactId>maven-war-plugin</artifactId>
+        <version>3.3.2</version>
+        <configuration>
+          <failOnMissingWebXml>false</failOnMissingWebXml>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>
+Run instructions
+Import as a Maven WAR (or Dynamic Web Project) into Eclipse/STS.
+
+Link Tomcat runtime to the project build path (or rely on provided scope for Maven).
+
+Update DBUtil credentials.
+
+Run the SQL script to create quizdb and seed data.
+
+Deploy to Tomcat.
+
+Navigate:
+
+http://localhost:8080/quiz-portal/ → welcome
+
+/login → sign in (user: john@gmail.com/john123, admin: admin@quiz.com/admin123)
+
+/dashboard → admin stats
+
+/quizzes → list quizzes
+
+/attempt?id=1 → attempt quiz
+
+submit to see result and leaderboard.
