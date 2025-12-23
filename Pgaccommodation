@@ -388,3 +388,110 @@ Request Body
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
             <version>2.5.0</version>
         </dependency>
+PG APIs
+Retrieve available PG places in a specific city
+
+URL: http://localhost:8085/pg/{city}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/pg/Bangalore
+List out available PG places in a specific locality
+
+URL: http://localhost:8085/pg/locality/{locality}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/pg/locality/BTM
+Retrieve a specific PG place detail by id
+
+URL: http://localhost:8085/pg/details/{id}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/pg/details/1
+Retrieve the owner details of a specific PG
+
+URL: http://localhost:8085/pg/owner/{id}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/pg/owner/1
+🔹 Owner APIs
+Add a new PG place
+
+URL: http://localhost:8085/owner/places/add/{ownerId}
+
+Method: POST
+
+Request Body (JSON):
+
+json
+{
+  "registrationNumber": "PG123",
+  "builtUpArea": 1200,
+  "rent": 8000,
+  "city": "Bangalore",
+  "locality": "BTM",
+  "available": true
+}
+Retrieve all PG places added by the owner
+
+URL: http://localhost:8085/owner/places/{ownerId}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/owner/places/1
+Change the status of PG place (Available or Not Available)
+
+URL: http://localhost:8085/owner/places/{id}
+
+Method: PUT
+
+Example:
+
+Code
+PUT http://localhost:8085/owner/places/1
+Edit Place details
+
+URL: http://localhost:8085/owner/places/edit
+
+Method: PUT
+
+Request Body (JSON):
+
+json
+{
+  "id": 1,
+  "registrationNumber": "PG123",
+  "builtUpArea": 1300,
+  "rent": 8500,
+  "city": "Bangalore",
+  "locality": "BTM",
+  "available": true
+}
+Delete Place Details
+
+URL: http://localhost:8085/owner/places/delete/{id}
+
+Method: DELETE
+
+Example:
+
+Code
+DELETE http://localhost:8085/owner/places/delete/1
