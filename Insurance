@@ -1,0 +1,159 @@
+The application should not close, exit, or throw an unhandled exception if the user specifies invalid input  give me a end to end project in angular 19 and bootstrap for the above question and sc pasted but only the color font and backgrount shl be a liitle more unique but shl conatain whatever implentation extacly what is asked content should be the same give extact code and method for where to add the images where where add the files and code  and the user add data should be stored in the json file and should contain what are changes to be done in default apps as ell and what need to be includeed
+where in stall bootstrap and json
+how to created model.ts
+can u add the interface in service itself
+what is the commanf for service
+where is navbar and footer component
+give the udated code for the above now
+Property 'form' does not exist on type 'BuyPlan'.ts(2339)
+any import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-buy-plan',
+  imports: [],
+  templateUrl: './buy-plan.html',
+  styleUrl: './buy-plan.css',
+})
+export class BuyPlan {
+submit() {
+  if (this.form.invalid) return;
+
+  this.bookingService.book(this.form.value).subscribe(result => {
+    if (result) this.success = true;
+  });
+}
+
+
+
+import { Component, signal } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { Navbar } from './components/navbar/navbar';
+import { Footer } from './components/footer/footer';
+
+@Component({
+  selector: 'app-root',
+  imports: [RouterOutlet, Navbar, Footer],
+  templateUrl: './app.html',
+  styleUrl: './app.css'
+})
+export class App {
+  protected readonly title = signal('insurance');
+}
+X [ERROR] NG8001: 'app-navbar' is not a known element: 
+1. If 'app-navbar' is an Angular component, then verify that it is included in the '@Component.imports' of this component.
+2. If 'app-navbar' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@Component.schemas' of this component to suppress this message. [plugin angular-compiler]
+
+    src/app/app.html:0:0:
+      0 │
+        ╵ ^
+
+  Error occurs in the template of component App.       
+
+    src/app/app.ts:7:15:
+      7 │   templateUrl: './app.html',
+        ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] NG8001: 'app-footer' is not a known element: 
+1. If 'app-footer' is an Angular component, then verify that it is included in the '@Component.imports' of this component.
+2. If 'app-footer' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@Component.schemas' of this component to suppress this message. [plugin angular-compiler]
+
+    src/app/app.html:7:0:
+      7 │ <app-footer></app-footer>
+        ╵ ~~~~~~~~~~~~
+
+  Error occurs in the template of component App.       
+
+    src/app/app.ts:7:15:
+      7 │   templateUrl: './app.html',
+        ╵                ~~~~~~~~~~~~
+
+
+Application bundle generation failed. [0.278 seconds] - 2025-12-23T16:03:22.053Z
+
+X [ERROR] NG8001: 'app-navbar' is not a known element: 
+1. If 'app-navbar' is an Angular component, then verify that it is included in the '@Component.imports' of this component.
+2. If 'app-navbar' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@Component.schemas' of this component to suppress this message. [plugin angular-compiler]
+
+    src/app/app.html:0:0:
+      0 │
+        ╵ ^
+
+  Error occurs in the template of component App.       
+
+    src/app/app.ts:7:15:
+      7 │   templateUrl: './app.html',
+        ╵                ~~~~~~~~~~~~
+
+
+X [ERROR] NG8001: 'app-footer' is not a known element: 
+1. If 'app-footer' is an Angular component, then verify that it is included in the '@Component.imports' of this component.
+2. If 'app-footer' is a Web Component then add 'CUSTOM_ELEMENTS_SCHEMA' to the '@Component.schemas' of this component to suppress this message. [plugin angular-compiler]
+
+    src/app/app.html:7:0:
+      7 │ <app-footer></app-footer>
+        ╵ ~~~~~~~~~~~~
+
+  Error occurs in the template of component App.       
+
+    src/app/app.ts:7:15:
+      7 │   templateUrl: './app.html',
+        ╵                ~~~~~~~~~~~~
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-footer',
+  imports: [],
+  templateUrl: './footer.html',
+  styleUrl: './footer.css',
+})
+export class Footer {
+
+}
+ I want these 4 pages in buy components but its not showing 
+all 4 html code should be in one file..?
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-buy-plan',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './buy-plan.html',
+  styleUrls: ['./buy-plan.css']
+})
+export class BuyPlanComponent {
+
+  // UI STATE CONTROLLER
+  step: 'AGE' | 'PLANS' | 'DETAILS' | 'CONFIRM' = 'AGE';
+
+  selectedPlan: any = null;
+
+  plans = [
+    {
+      id: 1,
+      name: 'Care Life Plan',
+      description: 'Instant coverage with emergency services.',
+      price: 3150
+    },
+    {
+      id: 2,
+      name: 'Good Health Plan',
+      description: 'Comprehensive health insurance.',
+      price: 2800
+    }
+  ];
+
+  answerAge(isBelow30: boolean) {
+    this.step = 'PLANS';
+  }
+
+  openDetails(plan: any) {
+    this.selectedPlan = plan;
+    this.step = 'DETAILS';
+  }
+
+  buyNow() {
+    this.step = 'CONFIRM';
+  }
+}   take data from db.json
