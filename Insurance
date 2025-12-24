@@ -157,3 +157,155 @@ export class BuyPlanComponent {
     this.step = 'CONFIRM';
   }
 }   take data from db.json
+
+
+Updated plan-card.component.ts
+ts
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Plan } from '../../../services/plan';
+import { CommonModule } from '@angular/common';
+
+@Component({
+  selector: 'app-plan-card',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './plan-card.html',
+  styleUrls: ['./plan-card.css'],   // ✅ fixed
+})
+export class PlanCard {
+  @Input() plan!: Plan; 
+  @Input() isAbove30?: boolean;     // ✅ added
+  @Output() view = new EventEmitter<Plan>();
+}
+✅ Updated plan-card.html
+html
+<div class="card h-100 shadow-sm">
+  <div class="card-body">
+    <h5 class="card-title">{{ plan.planName }}</h5>
+    <p class="card-text">{{ plan.description | slice:0:120 }}...</p>
+
+    <!-- ✅ Show base or premium depending on isAbove30 -->
+    <p class="mb-2">
+      <strong>Price:</strong>
+      ₹{{ isAbove30 ? (plan.baseAmt * 1.2 | number:'1.0-0') : plan.baseAmt }}
+    </p>
+
+    <button class="btn btn-outline-primary" (click)="view.emit(plan)">View more</button>
+  </div>
+</div>
+✅ Updated plans.component.ts
+ts
+import { CommonModule } from '@angular/common';
+import { Component } from '@angular/core';
+import { PlanCard } from '../plan-card/plan-card';
+import { PlanModal } from '../plan-modal/plan-modal';
+import { BuyForm } from '../buy-form/buy-form';
+import { Plan, PlanService } from '../../../services/plan';
+import { Booking, BookingService } from '../../../services/booking';
+import { firstValueFrom } from 'rxjs';
+
+@Component({
+  selector: 'app-plans',
+  standalone: true, 
+  imports: [CommonModule, PlanCard, PlanModal, BuyForm],
+  templateUrl: './plans.html',
+  styleUrls: ['./plans.css'],   // ✅ fixed
+})
+export class Plans {
+  plans: Plan[] = []; 
+  selected?: Plan; 
+  buying = false; 
+  agePopupVisible = true; 
+  isAbove30?: boolean; 
+
+  confirmedBooking?: Booking;   // ✅ fixed type
+
+  constructor(private planSvc: PlanService, private bookingSvc: BookingService) { 
+    this.loadPlans(); 
+  } 
+
+  async loadPlans() { 
+    try { 
+      this.plans = await firstValueFrom(this.planSvc.getPlans()); 
+    } catch { 
+      alert('Unable to load plans. Check JSON server.'); 
+    } 
+  } 
+
+  confirmAge(answer: boolean) { 
+    this.isAbove30 = answer; 
+    this.agePopupVisible = false; 
+  } 
+
+  openPlan(plan: Plan) { 
+    this.selected = plan; 
+    this.buying = false; 
+  } 
+
+  startBuy(plan: Plan) { 
+    this.selected = plan; 
+    this.buying = true; 
+  } 
+
+  closeModal() { 
+    this.selected = undefined; 
+    this.buying = false; 
+  } 
+
+  async completePurchase(booking: Booking) { 
+    try { 
+      await firstValueFrom(this.bookingSvc.createBooking(booking)); 
+      this.buying = false; 
+      this.selected = undefined; 
+      this.confirmedBooking = booking;   // ✅ store booking
+    } catch { 
+      alert('Failed to store booking. Please try again.'); 
+    } 
+  }
+}
+✅ Updated plans.html
+html
+<h2 class="mb-3">Insurance Plans</h2>
+
+<!-- Age popup -->
+<div class="modal fade show d-block" *ngIf="agePopupVisible" tabindex="-1" style="background:rgba(0,0,0,.5)">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Quick Question</h5>
+        <button class="btn-close" (click)="confirmAge(false)"></button>
+      </div>
+      <div class="modal-body">
+        Are you above 30 years of age?
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="confirmAge(false)">No</button>
+        <button class="btn btn-primary" (click)="confirmAge(true)">Yes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+  <div class="col" *ngFor="let p of plans">
+    <!-- ✅ pass isAbove30 down -->
+    <app-plan-card [plan]="p" [isAbove30]="isAbove30" (view)="openPlan($event)"></app-plan-card>
+  </div>
+</div>
+
+<!-- View more modal -->
+<app-plan-modal
+  *ngIf="selected && !buying"
+  [plan]="selected"
+  (close)="closeModal()"
+  (buy)="startBuy($event)">
+</app-plan-modal>
+
+<!-- Buy form modal -->
+<app-buy-form
+  *ngIf="selected && buying"
+  [plan]="selected"
+  [isAbove30]="isAbove30"
+  (close)="closeModal()"
+  (confirm)="completePurchase($event)">
+</app-buy-form>
