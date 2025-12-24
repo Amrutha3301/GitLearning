@@ -1,0 +1,497 @@
+Project Architecture
+pg-accommodation
+│
+├── controller
+│   ├── TenantController.java
+│   ├── OwnerController.java
+│   └── PgController.java
+│
+├── service
+│   ├── TenantService.java
+│   ├── OwnerService.java
+│   ├── PgService.java
+│   └── impl
+│       ├── TenantServiceImpl.java
+│       ├── OwnerServiceImpl.java
+│       └── PgServiceImpl.java
+│
+├── repository
+│   ├── TenantRepository.java
+│   ├── OwnerRepository.java
+│   └── PgPlaceRepository.java
+│
+├── entity
+│   ├── Tenant.java
+│   ├── Owner.java
+│   └── PgPlace.java
+│
+├── exception
+│   ├── ResourceNotFoundException.java
+│   ├── AgeNotValidException.java
+│   └── GlobalExceptionHandler.java
+│
+├── config
+│   └── SwaggerConfig.java
+│
+└── PgAccommodationApplication.java
+
+2️⃣ Database Configuration (MySQL)
+application.properties
+server.port=8085
+
+spring.datasource.url=jdbc:mysql://localhost:3306/pg_db
+spring.datasource.username=root
+spring.datasource.password=yourpassword
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQL8Dialect
+
+springdoc.api-docs.path=/v3/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+
+3️⃣ Entity Layer
+🔹 Tenant Entity
+@Entity
+public class Tenant {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private int age;
+    private String email;
+    private String mobile;
+
+    // getters & setters
+}
+
+🔹 Owner Entity
+@Entity
+public class Owner {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private int age;
+    private String email;
+    private String mobile;
+
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
+    private List<PgPlace> places;
+
+    // getters & setters
+}
+
+🔹 PG Place Entity
+@Entity
+public class PgPlace {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String registrationNumber;
+    private double builtUpArea;
+    private double rent;
+    private String city;
+    private String locality;
+
+    private boolean available;
+    private int visitorCount;
+
+    @ManyToOne
+    @JoinColumn(name = "owner_id")
+    private Owner owner;
+
+    // getters & setters
+}
+
+4️⃣ Repository Layer
+public interface TenantRepository extends JpaRepository<Tenant, Long> {}
+
+public interface OwnerRepository extends JpaRepository<Owner, Long> {}
+
+public interface PgPlaceRepository extends JpaRepository<PgPlace, Long> {
+
+    List<PgPlace> findByCityAndAvailableTrue(String city);
+
+    List<PgPlace> findByLocalityAndAvailableTrue(String locality);
+
+    List<PgPlace> findByOwnerId(Long ownerId);
+}
+
+5️⃣ Exception Handling
+🔹 Custom Exceptions
+public class AgeNotValidException extends RuntimeException {
+    public AgeNotValidException(String msg) {
+        super(msg);
+    }
+}
+
+public class ResourceNotFoundException extends RuntimeException {
+    public ResourceNotFoundException(String msg) {
+        super(msg);
+    }
+}
+
+🔹 Global Exception Handler
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AgeNotValidException.class)
+    public ResponseEntity<String> handleAge(AgeNotValidException ex) {
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<String> handleResource(ResourceNotFoundException ex) {
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+}
+
+6️⃣ Service Layer (Interface Segregation + DI)
+🔹 Tenant Service
+public interface TenantService {
+    Tenant registerTenant(Tenant tenant);
+}
+
+@Service
+public class TenantServiceImpl implements TenantService {
+
+    @Autowired
+    private TenantRepository tenantRepo;
+
+    @Override
+    public Tenant registerTenant(Tenant tenant) {
+        if (tenant.getAge() < 18)
+            throw new AgeNotValidException("Tenant must be 18+");
+
+        return tenantRepo.save(tenant);
+    }
+}
+
+🔹 PG Service
+public interface PgService {
+
+    List<PgPlace> getByCity(String city);
+    List<PgPlace> getByLocality(String locality);
+    PgPlace getPgDetails(Long id);
+    Owner getOwnerDetails(Long pgId);
+}
+
+@Service
+public class PgServiceImpl implements PgService {
+
+    @Autowired
+    private PgPlaceRepository pgRepo;
+
+    @Override
+    public List<PgPlace> getByCity(String city) {
+        return pgRepo.findByCityAndAvailableTrue(city);
+    }
+
+    @Override
+    public List<PgPlace> getByLocality(String locality) {
+        return pgRepo.findByLocalityAndAvailableTrue(locality);
+    }
+
+    @Override
+    public PgPlace getPgDetails(Long id) {
+        PgPlace pg = pgRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("PG not found"));
+        pg.setVisitorCount(pg.getVisitorCount() + 1);
+        return pgRepo.save(pg);
+    }
+
+    @Override
+    public Owner getOwnerDetails(Long pgId) {
+        PgPlace pg = getPgDetails(pgId);
+        if (!pg.isAvailable())
+            throw new ResourceNotFoundException("Owner details hidden (PG occupied)");
+        return pg.getOwner();
+    }
+}
+
+🔹 Owner Service
+public interface OwnerService {
+
+    PgPlace addPlace(Long ownerId, PgPlace place);
+    List<PgPlace> getOwnerPlaces(Long ownerId);
+    PgPlace updateStatus(Long placeId);
+    PgPlace editPlace(PgPlace place);
+    void deletePlace(Long placeId);
+}
+
+@Service
+public class OwnerServiceImpl implements OwnerService {
+
+    @Autowired
+    private OwnerRepository ownerRepo;
+
+    @Autowired
+    private PgPlaceRepository pgRepo;
+
+    @Override
+    public PgPlace addPlace(Long ownerId, PgPlace place) {
+        Owner owner = ownerRepo.findById(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
+        if (owner.getAge() < 18)
+            throw new AgeNotValidException("Owner must be 18+");
+
+        place.setOwner(owner);
+        place.setAvailable(true);
+        return pgRepo.save(place);
+    }
+
+    @Override
+    public List<PgPlace> getOwnerPlaces(Long ownerId) {
+        return pgRepo.findByOwnerId(ownerId);
+    }
+
+    @Override
+    public PgPlace updateStatus(Long placeId) {
+        PgPlace place = pgRepo.findById(placeId)
+                .orElseThrow(() -> new ResourceNotFoundException("Place not found"));
+        place.setAvailable(!place.isAvailable());
+        return pgRepo.save(place);
+    }
+
+    @Override
+    public PgPlace editPlace(PgPlace place) {
+        return pgRepo.save(place);
+    }
+
+    @Override
+    public void deletePlace(Long placeId) {
+        pgRepo.deleteById(placeId);
+    }
+}
+
+7️⃣ Controller Layer (All Required APIs)
+🔹 Tenant Controller
+@RestController
+@RequestMapping("/tenant")
+public class TenantController {
+
+    @Autowired
+    private TenantService tenantService;
+
+    @PostMapping("/register")
+    public Tenant register(@RequestBody Tenant tenant) {
+        return tenantService.registerTenant(tenant);
+    }
+}
+
+🔹 PG Controller
+@RestController
+@RequestMapping("/pg")
+public class PgController {
+
+    @Autowired
+    private PgService pgService;
+
+    @GetMapping("/{city}")
+    public List<PgPlace> getByCity(@PathVariable String city) {
+        return pgService.getByCity(city);
+    }
+
+    @GetMapping("/locality/{locality}")
+    public List<PgPlace> getByLocality(@PathVariable String locality) {
+        return pgService.getByLocality(locality);
+    }
+
+    @GetMapping("/details/{id}")
+    public PgPlace getDetails(@PathVariable Long id) {
+        return pgService.getPgDetails(id);
+    }
+
+    @GetMapping("/owner/{id}")
+    public Owner getOwner(@PathVariable Long id) {
+        return pgService.getOwnerDetails(id);
+    }
+}
+
+🔹 Owner Controller
+@RestController
+@RequestMapping("/owner")
+public class OwnerController {
+
+    @Autowired
+    private OwnerService ownerService;
+
+    @PostMapping("/places/add/{ownerId}")
+    public PgPlace addPlace(@PathVariable Long ownerId,
+                            @RequestBody PgPlace place) {
+        return ownerService.addPlace(ownerId, place);
+    }
+
+    @GetMapping("/places/{ownerId}")
+    public List<PgPlace> getPlaces(@PathVariable Long ownerId) {
+        return ownerService.getOwnerPlaces(ownerId);
+    }
+
+    @PutMapping("/places/{id}")
+    public PgPlace changeStatus(@PathVariable Long id) {
+        return ownerService.updateStatus(id);
+    }
+
+    @PutMapping("/places/edit")
+    public PgPlace edit(@RequestBody PgPlace place) {
+        return ownerService.editPlace(place);
+    }
+
+    @DeleteMapping("/places/delete/{id}")
+    public String delete(@PathVariable Long id) {
+        ownerService.deletePlace(id);
+        return "Deleted Successfully";
+    }
+}
+
+8️⃣ Swagger Configuration
+@Configuration
+public class SwaggerConfig {
+
+    @Bean
+    public OpenAPI pgOpenAPI() {
+        return new OpenAPI()
+                .info(new Info()
+                        .title("PG Accommodation API")
+                        .description("Paying Guest Accommodation System")
+                        .version("1.0"));
+    }
+}
+
+📌 Swagger URL
+http://localhost:8085/swagger-ui.html
+
+Example: Adding a PG Place API
+POST http://localhost:8085/owner/places/add/1
+
+
+Request Body
+
+{
+  "registrationNumber": "PG123",
+  "builtUpArea": 1200,
+  "rent": 8000,
+  "city": "Bangalore",
+  "locality": "BTM",
+  "available": true
+}
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.5.0</version>
+        </dependency>
+PG APIs
+Retrieve available PG places in a specific city
+
+URL: http://localhost:8085/pg/{city}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/pg/Bangalore
+List out available PG places in a specific locality
+
+URL: http://localhost:8085/pg/locality/{locality}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/pg/locality/BTM
+Retrieve a specific PG place detail by id
+
+URL: http://localhost:8085/pg/details/{id}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/pg/details/1
+Retrieve the owner details of a specific PG
+
+URL: http://localhost:8085/pg/owner/{id}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/pg/owner/1
+🔹 Owner APIs
+Add a new PG place
+
+URL: http://localhost:8085/owner/places/add/{ownerId}
+
+Method: POST
+
+Request Body (JSON):
+
+json
+{
+  "registrationNumber": "PG123",
+  "builtUpArea": 1200,
+  "rent": 8000,
+  "city": "Bangalore",
+  "locality": "BTM",
+  "available": true
+}
+Retrieve all PG places added by the owner
+
+URL: http://localhost:8085/owner/places/{ownerId}
+
+Method: GET
+
+Example:
+
+Code
+GET http://localhost:8085/owner/places/1
+Change the status of PG place (Available or Not Available)
+
+URL: http://localhost:8085/owner/places/{id}
+
+Method: PUT
+
+Example:
+
+Code
+PUT http://localhost:8085/owner/places/1
+Edit Place details
+
+URL: http://localhost:8085/owner/places/edit
+
+Method: PUT
+
+Request Body (JSON):
+
+json
+{
+  "id": 1,
+  "registrationNumber": "PG123",
+  "builtUpArea": 1300,
+  "rent": 8500,
+  "city": "Bangalore",
+  "locality": "BTM",
+  "available": true
+}
+Delete Place Details
+
+URL: http://localhost:8085/owner/places/delete/{id}
+
+Method: DELETE
+
+Example:
+
+Code
+DELETE http://localhost:8085/owner/places/delete/1
